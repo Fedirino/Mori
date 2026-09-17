@@ -67,7 +67,7 @@ function cleanMessages(messages) {
   return cleaned.length && total <= 60_000 ? cleaned : null;
 }
 
-async function handleChat(req, res) {
+async function handleChat(req, res, sessionKey) {
   const messages = cleanMessages(req.body && req.body.messages);
   if (!messages) return json(res, 400, { error: 'Invalid messages.' });
 
@@ -83,17 +83,22 @@ async function handleChat(req, res) {
     .map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.content)
     .join('\n');
 
+  const runHeaders = sessionKey
+    ? { Authorization: 'Bearer ' + hermesKey, 'Content-Type': 'application/json', 'X-Hermes-Session-Key': sessionKey }
+    : { Authorization: 'Bearer ' + hermesKey, 'Content-Type': 'application/json' };
+
   // Step 1: Create a run
-  const createResp = await fetch(hermesUrl + '/v1/runs', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + hermesKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'kyo',
-      input: input.slice(0, 60_000),
-      max_tokens: Math.min(1000, Math.max(80, Number(req.body.max_tokens) || 220)),
-      temperature: Math.min(1, Math.max(0, Number(req.body.temperature) || 0.6))
-    })
-  });
+    const createResp = await fetch(hermesUrl + '/v1/runs', {
+      method: 'POST',
+      headers: runHeaders,
+      body: JSON.stringify({
+        model: 'kyo',
+        input: input.slice(0, 60_000),
+        session_id: sessionKey ? ('winston-conv-' + sessionKey.replace(/[^A-Za-z0-9_-]/g, '')) : undefined,
+        max_tokens: Math.min(1000, Math.max(80, Number(req.body.max_tokens) || 220)),
+        temperature: Math.min(1, Math.max(0, Number(req.body.temperature) || 0.6))
+      })
+    });
   if (!createResp.ok) {
     const detail = (await createResp.text().catch(() => '')).slice(0, 180);
     console.error('Hermes runs create error', createResp.status, detail);
@@ -113,8 +118,10 @@ async function handleChat(req, res) {
     await new Promise(r => setTimeout(r, 600));
     try {
       const eventsResp = await fetch(hermesUrl + '/v1/runs/' + runId + '/events', {
-        headers: { Authorization: 'Bearer ' + hermesKey }
-      });
+              headers: sessionKey
+                ? { Authorization: 'Bearer ' + hermesKey, 'X-Hermes-Session-Key': sessionKey }
+                : { Authorization: 'Bearer ' + hermesKey }
+            });
       if (!eventsResp.ok) {
         // 404 means the event log is gone — fetch the run status directly
         if (eventsResp.status === 404) {
@@ -311,7 +318,7 @@ exports.api = onRequest({
   if (!rateLimit(user.uid)) return json(res, 429, { error: 'Too many requests. Try again shortly.' });
 
   try {
-    if (path.endsWith('/chat')) return await handleChat(req, res);
+    if (path.endsWith('/chat')) return await handleChat(req, res, 'winston:' + user.uid);
     if (path.endsWith('/tts')) return await handleSpeech(req, res);
     if (path.endsWith('/transcribe')) return await handleTranscribe(req, res);
     return json(res, 404, { error: 'Unknown endpoint.' });
