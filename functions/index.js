@@ -88,7 +88,7 @@ async function handleChat(req, res) {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + hermesKey, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'hermes-agent',
+      model: 'kyo',
       input: input.slice(0, 60_000),
       max_tokens: Math.min(1000, Math.max(80, Number(req.body.max_tokens) || 220)),
       temperature: Math.min(1, Math.max(0, Number(req.body.temperature) || 0.6))
