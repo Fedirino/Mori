@@ -1,4 +1,4 @@
-# Winston
+# Mori
 
 Voice-first AI assistant — a public PWA that routes speech and text through a secure cloud relay to a private Hermes Agent backend.
 

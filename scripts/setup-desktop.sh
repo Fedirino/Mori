@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Winston Desktop — setup and build script for Windows
+# Mori Desktop — setup and build script for Windows
 # Run this from git-bash to install dependencies and build
 
 set -e
 
-echo "=== Winston Desktop Setup ==="
+echo "=== Mori Desktop Setup ==="
 
 # Check for Visual Studio Build Tools (needed for MSVC Rust toolchain)
 VS_INSTALLED=false
@@ -47,12 +47,12 @@ rustup default stable-x86_64-pc-windows-msvc
 
 # 3. Build
 echo ""
-echo "=== Building Winston Desktop ==="
+echo "=== Building Mori Desktop ==="
 cd "$(dirname "$0")/../src-tauri"
 cargo build --release
 
 echo ""
 echo "=== Done! ==="
-echo "Binary at: src-tauri/target/release/winston.exe"
+echo "Binary at: src-tauri/target/release/mori.exe"
 echo "Run with: npx tauri dev (from project root)"
-echo "Or open src-tauri/target/release/winston.exe directly"
+echo "Or open src-tauri/target/release/mori.exe directly"

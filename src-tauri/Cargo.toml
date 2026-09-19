@@ -1,7 +1,7 @@
 [package]
-name = "winston"
+name = "mori"
 version = "0.1.0"
-description = "Winston Desktop — local Hermes companion"
+description = "Mori Desktop — local Hermes companion"
 authors = ["you"]
 license = "MIT"
 edition = "2021"

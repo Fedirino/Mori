@@ -1,4 +1,10 @@
 # Changelog
+## [0.9.4] - 2026-09-19
+
+### Changed
+- Renamed the app from Winston to **Mori** — the assistant's chosen name (Latin for "messenger," Welsh for "sea", a nod to the Hermes harness). Updated everywhere user-facing: title, wordmark, aria-labels, status text, persona name, greeting, version tag, hands-free wake word ("hey Mori", covering common mishearings like Morey/Mory/Maury), manifest, README, and the Tauri desktop identifier (`com.mori.desktop`). GitHub repo renamed to `Fedirino/Mori`.
+- Default ElevenLabs voice switched to **George** (`JBFqnCBsd6RMkjVDRZzb`) as Mori's voice; the settings override still lets you pick any voice.
+
 ## [0.9.1] - 2026-08-20
 
 ### Fixed

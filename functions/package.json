@@ -1,8 +1,8 @@
 {
-  "name": "winston-functions",
-  "version": "0.8.1",
-  "private": true,
-  "main": "index.js",
+  "name": "mori-functions",
+    "version": "0.9.4",
+    "private": true,
+    "main": "index.js",
   "engines": {
     "node": "22"
   },

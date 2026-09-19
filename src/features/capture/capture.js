@@ -1,4 +1,4 @@
-const DEFAULT_STORAGE_KEY = 'winston.core.items.v1';
+const DEFAULT_STORAGE_KEY = 'mori.core.items.v1';
 
 export const CORE_PROJECTS = [
   'Clip Forge',
@@ -6,7 +6,7 @@ export const CORE_PROJECTS = [
   'Signal Ghost',
   'Clarity',
   'PDP',
-  'Winston'
+  'Mori'
 ];
 
 const WEEKDAYS = {

@@ -94,7 +94,7 @@ async function handleChat(req, res, sessionKey) {
       body: JSON.stringify({
         model: 'kyo',
         input: input.slice(0, 60_000),
-        session_id: sessionKey ? ('winston-conv-' + sessionKey.replace(/[^A-Za-z0-9_-]/g, '')) : undefined,
+        session_id: sessionKey ? ('mori-conv-' + sessionKey.replace(/[^A-Za-z0-9_-]/g, '')) : undefined,
         max_tokens: Math.min(1000, Math.max(80, Number(req.body.max_tokens) || 220)),
         temperature: Math.min(1, Math.max(0, Number(req.body.temperature) || 0.6))
       })
@@ -318,12 +318,12 @@ exports.api = onRequest({
   if (!rateLimit(user.uid)) return json(res, 429, { error: 'Too many requests. Try again shortly.' });
 
   try {
-    if (path.endsWith('/chat')) return await handleChat(req, res, 'winston:' + user.uid);
+    if (path.endsWith('/chat')) return await handleChat(req, res, 'mori:' + user.uid);
     if (path.endsWith('/tts')) return await handleSpeech(req, res);
     if (path.endsWith('/transcribe')) return await handleTranscribe(req, res);
     return json(res, 404, { error: 'Unknown endpoint.' });
   } catch (error) {
-    console.error('Winston API error', error);
-    return json(res, 500, { error: 'Winston could not complete that request.' });
+    console.error('Mori API error', error);
+    return json(res, 500, { error: 'Mori could not complete that request.' });
   }
 });

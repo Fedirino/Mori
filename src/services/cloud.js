@@ -8,7 +8,7 @@ export class CloudRequestError extends Error {
   }
 }
 
-export function createWinstonCloud({ onState = () => {} } = {}) {
+export function createMoriCloud({ onState = () => {} } = {}) {
   let auth = null;
   let authApi = null;
   let user = null;

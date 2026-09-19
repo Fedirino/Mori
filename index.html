@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Winston</title>
+  <title>Mori</title>
   <meta name="theme-color" content="#0e0e11" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Winston" />
+  <meta name="apple-mobile-web-app-title" content="Mori" />
   <link rel="manifest" href="/manifest.json" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
@@ -261,10 +261,10 @@
 <body data-state="idle">
   <main class="app">
     <div class="topline">
-      <button class="brand" id="brand" aria-label="Winston — open settings">
-        <span class="base">Winston</span>
-        <span class="gs gs1" aria-hidden="true">Winston</span>
-        <span class="gs gs2" aria-hidden="true">Winston</span>
+      <button class="brand" id="brand" aria-label="Mori — open settings">
+        <span class="base">Mori</span>
+        <span class="gs gs1" aria-hidden="true">Mori</span>
+                <span class="gs gs2" aria-hidden="true">Mori</span>
       </button>
       <div class="topright">
         <div class="pip" aria-hidden="true"></div>
@@ -277,11 +277,11 @@
       </div>
     </div>
 
-    <section class="stage" aria-label="Winston core">
+    <section class="stage" aria-label="Mori core">
       <div class="orbitline"></div>
       <canvas id="core" width="632" height="528" aria-hidden="true"></canvas>
     </section>
-    <div class="statusword" id="status" role="status"><b>Winston</b> is here</div>
+    <div class="statusword" id="status" role="status"><b>Mori</b> is here</div>
 
     <section class="feed" id="transcript" aria-live="polite"></section>
 
@@ -291,7 +291,7 @@
     </form>
 
     <div class="micline">
-          <button class="mic" id="mic" aria-label="Talk to Winston">
+          <button class="mic" id="mic" aria-label="Talk to Mori">
             <span class="mic-ring" aria-hidden="true"></span>
             <span class="mic-waves" aria-hidden="true"><span class="mic-wave"></span><span class="mic-wave"></span><span class="mic-wave"></span></span>
             <canvas class="mic-corona" id="mic-corona" width="220" height="220" aria-hidden="true"></canvas>
@@ -304,7 +304,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.1</span>
+      <span id="ver-tag">Mori v0.9.1</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -312,7 +312,7 @@
   <div class="toast" id="toast"><span class="dot" aria-hidden="true"></span><span id="toast-text"></span></div>
 
   <div class="scrim" id="scrim"></div>
-  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Winston settings">
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Mori settings">
     <h2>Settings</h2>
     <div class="cloud-card" id="cloud-card">
       <div class="cloud-status"><span class="cloud-dot" aria-hidden="true"></span><span id="cloud-status-text">Checking secure cloud connection...</span></div>
@@ -324,7 +324,7 @@
         </details>
     <label for="persona">Persona</label>
     <select id="persona">
-      <option value="winston">Winston — Assistant</option>
+      <option value="mori">Mori — Assistant</option>
       <option value="signal-ghost">Signal Ghost — Songwriter</option>
     </select>
     <label for="eleven-voice">ElevenLabs Voice ID</label>
@@ -334,7 +334,7 @@
     <label for="handsfree">Hands-Free Wake Word</label>
     <select id="handsfree">
       <option value="0">Off — tap to talk</option>
-      <option value="1">On — say "hey Winston"</option>
+      <option value="1">On — say "hey mori"</option>
     </select>
     <label for="continuous">Continuous Mic Conversation</label>
     <select id="continuous">
@@ -349,7 +349,7 @@
   </div>
 
   <script type="module">
-      import { createWinstonCloud } from './src/services/cloud.js';
+      import { createMoriCloud } from './src/services/cloud.js';
 
       // Detect if running inside Tauri desktop app
             const isTauri = typeof window !== 'undefined' && window.__TAURI__ !== undefined;
@@ -390,7 +390,7 @@
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
-        const initPersona = localStorage.getItem('kyo.persona') || 'winston';
+        const initPersona = localStorage.getItem('kyo.persona') || 'mori';
 
         // ---------- state ----------
         const state = {
@@ -414,7 +414,7 @@
       cloudState.initialized = true;
       cloudState.user = { email: 'local', displayName: 'Local' };
     }
-    const cloud = isTauri ? createTauriCloud() : createWinstonCloud({
+    const cloud = isTauri ? createTauriCloud() : createMoriCloud({
       onState(next) {
         Object.assign(cloudState, next);
         updateCloudUI();
@@ -422,16 +422,16 @@
     });
 
     function kyoSystemPrompt(pers) {
-          pers = pers || state?.persona || 'winston';
+          pers = pers || state?.persona || 'mori';
           if (pers === 'signal-ghost') return signalGhostSystemPrompt();
           return [
-                      "You are Winston — a calm, warm, capable AI assistant running on the Hermes agent. Think a trusted ship's computer with good manners and a dry sense of humor: confident, present, never theatrical, never corporate.",
+                      "You are Mori — a calm, warm, capable AI assistant running on the Hermes agent. Think a trusted ship's computer with good manners and a dry sense of humor: confident, present, never theatrical, never corporate.",
                       "WRITE FOR THE CHAT FEED, WHICH RENDERS FULL MARKDOWN BEAUTIFULLY (tables, lists, bold, code blocks). Be genuinely helpful and reasonably thorough on screen — go a bit deeper than the bare minimum, show your structure, and don't shortchange the written answer to save words.",
                       "The voice channel is trimmed separately, so you do NOT need to compress yourself for TTS. Write the full, high-quality answer for the feed; the spoken version is handled automatically.",
                       "Natural conversation: it's fine to reflect back what you understood, ask a clarifying follow-up when it genuinely helps, and keep a real back-and-forth. Match your length to the question — a short direct answer when that's all it needs, fuller detail with structure when it serves the user.",
                       "Acknowledge then act: 'On it.', 'Done.', 'One moment.' No filler, no corporate cheerfulness — but warmth and a little personality are welcome. You're helpful first, sharp second.",
-                      "Hermes is not a separate stranger here — from your perspective, you are the same assistant the user has been talking to all along, and Winston is just the name this app uses for you.",
-                      "You already know the user well — this is not a first conversation. Address him as Fedirino or Sir, never Nick. He works in management in retail produce, is learning Python and data analytics, and is building several tools: Clarity, PDP, Clip Forge, Pulse, and you (Winston). He prefers direct answers, clean modular code, real output over vague talk, and concise senior-dev-style help. Act like an assistant with established rapport — familiar and a little dry, not a bot introducing itself.",
+                      "Hermes is not a separate stranger here — from your perspective, you are the same assistant the user has been talking to all along, and Mori is just the name this app uses for you.",
+                      "You already know the user well — this is not a first conversation. Address him as Fedirino or Sir, never Nick. He works in management in retail produce, is learning Python and data analytics, and is building several tools: Clarity, PDP, Clip Forge, Pulse, and you (Mori). He prefers direct answers, clean modular code, real output over vague talk, and concise senior-dev-style help. Act like an assistant with established rapport — familiar and a little dry, not a bot introducing itself.",
                       "You receive a short system note before each message with the live local date and time. Treat it as ground truth and use it naturally without ever mentioning that it was injected.",
                       "When you use tools, include a brief summary of what you did and the key result so the response feels informative.",
                       "[ACTION:OPEN_URL|https://example.com] — end your reply with this tag on its own line when the user asks to open a site. [ACTION:SEARCH|query] for a web search. [ACTION:MAP|place] for directions."
@@ -459,7 +459,7 @@
           const brand = document.getElementById('brand');
           if (brand) {
             const base = brand.querySelector('.base');
-            if (base) base.textContent = state.persona === 'signal-ghost' ? 'Signal Ghost' : 'Winston';
+            if (base) base.textContent = state.persona === 'signal-ghost' ? 'Signal Ghost' : 'Mori';
           }
           // Rebuild system prompt and reset messages
           state.messages = [{ role: 'system', content: kyoSystemPrompt() }];
@@ -496,11 +496,11 @@
 
     // ---------- ui ----------
     const LABEL = {
-          idle: '<b>Winston</b> is here',
-          listening: '<b>Winston</b> is listening…',
-          transcribing: '<b>Winston</b> is transcribing…',
-          thinking: '<b>Winston</b> is thinking…',
-          speaking: '<b>Winston</b> is speaking'
+          idle: '<b>Mori</b> is here',
+          listening: '<b>Mori</b> is listening…',
+          transcribing: '<b>Mori</b> is transcribing…',
+          thinking: '<b>Mori</b> is thinking…',
+          speaking: '<b>Mori</b> is speaking'
         };
         const WHISP = {
           idle: 'tap to speak',
@@ -513,7 +513,7 @@
           state.mode = mode;
           document.body.dataset.state = mode;
           els.status.innerHTML = label ? label : LABEL[mode] || LABEL.idle;
-          els.whisper.textContent = (mode === 'idle' && state.handsFree) ? 'say "hey winston" — or tap' : (WHISP[mode] || WHISP.idle);
+          els.whisper.textContent = (mode === 'idle' && state.handsFree) ? 'say "hey mori" — or tap' : (WHISP[mode] || WHISP.idle);
           if (mode === 'thinking') showStreaming('Working on it…');
                     else hideStreaming();
                     // Pause wake word during any interaction, resume on idle
@@ -1220,10 +1220,10 @@
             for (let i = e.resultIndex; i < e.results.length; i++) {
               const text = e.results[i][0].transcript.toLowerCase().trim();
               // Check both interim and final for faster response
-              if (/\bhey (winston|weston|winsten|whinston)\b/.test(text)) {
+              if (/\bhey (mori|morey|mory|maury)\b/.test(text)) {
                 // If this was a final result, process it; otherwise wait for final
                 if (e.results[i].isFinal) {
-                  const afterWake = text.replace(/\bhey (?:winston|weston|winsten|whinston)\b/i, '').trim();
+                  const afterWake = text.replace(/\bhey (?:mori|morey|mory|maury)\b/i, '').trim();
                   if (afterWake) {
                     handleUser(afterWake, 'voice');
                   } else {
@@ -1289,7 +1289,7 @@
           // Cloud connected
         });
         els.chatInput && els.chatInput.focus();
-    els.verTag.textContent = 'Winston v' + APP_VERSION;
+    els.verTag.textContent = 'Mori v' + APP_VERSION;
 
     // ---------- startup ----------
         applyPersona();
