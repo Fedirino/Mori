@@ -183,7 +183,7 @@ async function handleChat(req, res, sessionKey) {
 
   let trimmed = fullOutput || '';
   if (fullOutput && fullOutput.length > 120) {
-    trimmed = compressVoiceReply(fullOutput);
+    trimmed = compressVoiceReply(fullOutput, messages);
   }
 
   return json(res, 200, {
@@ -192,7 +192,10 @@ async function handleChat(req, res, sessionKey) {
   });
 }
 
-function compressVoiceReply(text) {
+function compressVoiceReply(text, messages = []) {
+  const smartHomeReply = compactHomeControlReply(text, messages);
+  if (smartHomeReply) return smartHomeReply;
+
   // Strip markdown code blocks (full tool output, JSON, etc.)
   text = text.replace(/```[\s\S]*?```/g, '').trim();
   // Strip inline code snippets
@@ -230,6 +233,41 @@ function compressVoiceReply(text) {
   }
 
   return keep.join(' ').trim();
+}
+
+function compactHomeControlReply(text, messages = []) {
+  const raw = String(text || '');
+  const lower = raw.toLowerCase();
+  const lastUser = [...messages].reverse().find((message) => message.role === 'user');
+  const command = String((lastUser && lastUser.content) || '').toLowerCase();
+
+  if (!command || !/(light|lights|lamp|lamps|switch|switches|turn|dim|bright|color|colour)/.test(command)) {
+    return '';
+  }
+
+  // Do not hide real failures or troubleshooting details.
+  if (/(error|failed|couldn['’]?t|unable|unavailable|not available|offline|problem|issue)/.test(lower)) {
+    return '';
+  }
+
+  // Only compact replies that look like successful action confirmations.
+  if (!/(done|fixed|success|succeeded|turned|set|changed|verified|reports|now)/.test(lower)) {
+    return '';
+  }
+
+  const colorWords = [
+    'magenta', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'blue',
+    'cyan', 'teal', 'white', 'warm white', 'cool white'
+  ];
+  const color = colorWords.find((word) => command.includes(word));
+  const target = /all/.test(command) ? 'the available lights' : 'that';
+
+  if (color) return `Done — ${target} are ${color}.`;
+  if (/\boff\b/.test(command)) return `Done — ${target} are off.`;
+  if (/\bon\b/.test(command)) return `Done — ${target} are on.`;
+  if (/(dim|brightness|bright)/.test(command)) return `Done — ${target} are set.`;
+
+  return 'Done.';
 }
 
 async function handleSpeech(req, res) {
