@@ -386,7 +386,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.3';
+      const APP_VERSION = '0.9.5';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -561,6 +561,45 @@
       els.toast.classList.add('show');
       clearTimeout(window._toastTimer);
       window._toastTimer = setTimeout(() => els.toast.classList.remove('show'), 3000);
+    }
+
+    function registerAppUpdater() {
+      if (!('serviceWorker' in navigator)) return;
+
+      let refreshing = false;
+      const hadController = !!navigator.serviceWorker.controller;
+
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController || refreshing) return;
+        refreshing = true;
+        showToast('Updated Mori — reloading…');
+        setTimeout(() => window.location.reload(), 350);
+      });
+
+      navigator.serviceWorker.register('/service-worker.js').then((registration) => {
+        const activateUpdate = (worker) => {
+          if (!worker || !navigator.serviceWorker.controller) return;
+          showToast('Updating Mori…');
+          worker.postMessage({ type: 'SKIP_WAITING' });
+        };
+
+        if (registration.waiting) activateUpdate(registration.waiting);
+
+        registration.addEventListener('updatefound', () => {
+          const worker = registration.installing;
+          if (!worker) return;
+          worker.addEventListener('statechange', () => {
+            if (worker.state === 'installed') activateUpdate(worker);
+          });
+        });
+
+        const checkForUpdates = () => registration.update().catch(() => {});
+        setTimeout(checkForUpdates, 1500);
+        setInterval(checkForUpdates, 10 * 60 * 1000);
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') checkForUpdates();
+        });
+      }).catch(() => {});
     }
 
     // ---------- settings ----------
@@ -1292,6 +1331,7 @@
     els.verTag.textContent = 'Mori v' + APP_VERSION;
 
     // ---------- startup ----------
+        registerAppUpdater();
         applyPersona();
         setTimeout(() => startWakeWord(), 2000);
   </script>

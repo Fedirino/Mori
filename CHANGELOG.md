@@ -1,4 +1,12 @@
 # Changelog
+## [0.9.5] - 2026-09-22
+
+### Added
+- Added a LoomRP-style PWA auto-updater: Mori now checks for service-worker updates on launch, periodically while open, and when the app returns to the foreground; when a new worker activates, it shows a toast and reloads cleanly.
+
+### Changed
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.5` so installed PWAs pick up this updater release.
+
 ## [0.9.4] - 2026-09-19
 
 ### Changed
