@@ -1,4 +1,11 @@
 # Changelog
+## [0.9.6] - 2026-09-22
+
+### Changed
+- Simplified Mori’s default response style for the app: short-first replies, tiny action confirmations, and fewer verification/device lists unless the user asks for detail.
+- Lowered the app’s default response token budget and tightened the backend fallback compressor while preserving detail for explicit explain/debug/plan/code requests.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.6`.
+
 ## [0.9.5] - 2026-09-22
 
 ### Added

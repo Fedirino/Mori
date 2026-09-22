@@ -192,9 +192,16 @@ async function handleChat(req, res, sessionKey) {
   });
 }
 
+function shouldKeepDetailedReply(messages = []) {
+  const lastUser = [...messages].reverse().find((message) => message.role === 'user');
+  const command = String((lastUser && lastUser.content) || '').toLowerCase();
+  return /\b(detail|detailed|explain|why|how|steps|step by step|plan|code|script|debug|diagnose|compare|pros|cons|full|thorough|deep dive|breakdown)\b/.test(command);
+}
+
 function compressVoiceReply(text, messages = []) {
   const smartHomeReply = compactHomeControlReply(text, messages);
   if (smartHomeReply) return smartHomeReply;
+  const keepDetailed = shouldKeepDetailedReply(messages);
 
   // Strip markdown code blocks (full tool output, JSON, etc.)
   text = text.replace(/```[\s\S]*?```/g, '').trim();
@@ -226,10 +233,15 @@ function compressVoiceReply(text, messages = []) {
 
   if (clean.length <= 2) return clean.join(' ');
 
-  // Take first 2 sentences. If the first is very short (acknowledgement), include the third.
-  let keep = clean.slice(0, 2);
-  if (clean[0].length < 30 && clean.length >= 3) {
-    keep = clean.slice(0, 3);
+  if (keepDetailed) {
+    // Detailed requests can keep a compact three-sentence summary; the prompt handles asking for real depth.
+    return clean.slice(0, 3).join(' ').trim();
+  }
+
+  // Mori default: one direct sentence; keep a second only for a meaningful caveat/follow-up.
+  let keep = clean.slice(0, 1);
+  if (clean[0].length < 45 && clean.length >= 2) {
+    keep = clean.slice(0, 2);
   }
 
   return keep.join(' ').trim();
