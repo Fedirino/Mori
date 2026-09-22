@@ -245,27 +245,33 @@ function compactHomeControlReply(text, messages = []) {
     return '';
   }
 
-  // Do not hide real failures or troubleshooting details.
-  if (/(error|failed|couldn['’]?t|unable|unavailable|not available|offline|problem|issue)/.test(lower)) {
+  const hasHardFailure = /(error|failed|couldn['’]?t|unable|problem|issue)/.test(lower);
+  const hasUnavailable = /(unavailable|not available|offline)/.test(lower);
+  const userAllowedPartial = /(ones? you can|available|except|skip|if .*can|whatever .*can)/.test(command);
+
+  // Do not hide real failures or troubleshooting details. A known unavailable light is
+  // okay to summarize when the user explicitly asked for "the ones you can".
+  if (hasHardFailure || (hasUnavailable && !userAllowedPartial)) {
     return '';
   }
 
-  // Only compact replies that look like successful action confirmations.
-  if (!/(done|fixed|success|succeeded|turned|set|changed|verified|reports|now)/.test(lower)) {
+  // Only compact replies that look like successful or partial-success action confirmations.
+  if (!/(done|fixed|success|succeeded|turned|set|changed|verified|reports|now|skipped)/.test(lower)) {
     return '';
   }
 
   const colorWords = [
-    'magenta', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'blue',
-    'cyan', 'teal', 'white', 'warm white', 'cool white'
+    'warm white', 'cool white', 'magenta', 'purple', 'pink', 'red', 'orange',
+    'yellow', 'green', 'blue', 'cyan', 'teal', 'white'
   ];
   const color = colorWords.find((word) => command.includes(word));
-  const target = /all/.test(command) ? 'the available lights' : 'that';
+  const target = /all/.test(command) || userAllowedPartial ? 'the available lights' : 'that';
+  const skipped = hasUnavailable ? ' Nick’s Light is still unavailable.' : '';
 
-  if (color) return `Done — ${target} are ${color}.`;
-  if (/\boff\b/.test(command)) return `Done — ${target} are off.`;
-  if (/\bon\b/.test(command)) return `Done — ${target} are on.`;
-  if (/(dim|brightness|bright)/.test(command)) return `Done — ${target} are set.`;
+  if (color) return `Done — ${target} are ${color}.${skipped}`;
+  if (/\boff\b/.test(command)) return `Done — ${target} are off.${skipped}`;
+  if (/\bon\b/.test(command)) return `Done — ${target} are on.${skipped}`;
+  if (/(dim|brightness|bright)/.test(command)) return `Done — ${target} are set.${skipped}`;
 
   return 'Done.';
 }
