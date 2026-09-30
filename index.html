@@ -386,7 +386,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.6';
+      const APP_VERSION = '0.9.7';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -1180,15 +1180,17 @@
                                               flushMicText();
                                             }
                                             setMode('idle');
-                                            // Restart if in continuous/hands-free mode
-                                            if (state.handsFree || state.continuous) {
+                                            // Restart active dictation only when explicit continuous mic is enabled.
+                                            // Hands-free should return to wake-word mode instead; restarting listen()
+                                            // here makes a tap appear to flip on/off or loop unexpectedly.
+                                            if (state.continuous) {
                                               setTimeout(() => listen(), 400);
                                             } else if (state.handsFree) {
                                               startWakeWord();
                                             }
                                           };
 
-                                          recog.onerror = () => {
+                                          recog.onerror = (event) => {
                                             state.listening = false;
                                             if (micSilenceTimer) { clearTimeout(micSilenceTimer); micSilenceTimer = null; }
                                             micFinalText = '';
@@ -1227,11 +1229,14 @@
                   setupRecognitionHandlers(recognition);
 
                   try {
-                    recognition.start();
                     state.listening = true;
                     setMode('listening');
+                    recognition.start();
                   } catch (e) {
+                    state.listening = false;
+                    setMode('idle');
                     recognition = null;
+                    showToast('Could not start voice input. Check microphone permission.');
                     if (state.handsFree) startWakeWord();
                   }
                 }

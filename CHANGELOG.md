@@ -1,4 +1,10 @@
 # Changelog
+## [0.9.7] - 2026-09-30
+
+### Fixed
+- Fixed tap-to-voice immediately flipping back to idle by setting the listening UI state before starting browser speech recognition and returning hands-free sessions to wake-word mode instead of recursively starting active dictation.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.7` so installed PWAs pick up the mic fix.
+
 ## [0.9.6] - 2026-09-22
 
 ### Changed
