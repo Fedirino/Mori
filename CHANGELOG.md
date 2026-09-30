@@ -1,4 +1,10 @@
 # Changelog
+## [0.9.8] - 2026-09-30
+
+### Fixed
+- Fixed a second tap-to-voice race where speech-recognition cleanup could switch Mori back to idle or reopen the mic after the voice text had already been handed to `handleUser()` for processing.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.8` so installed PWAs pick up the follow-up mic fix.
+
 ## [0.9.7] - 2026-09-30
 
 ### Fixed

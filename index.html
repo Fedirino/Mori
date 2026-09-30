@@ -386,7 +386,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.7';
+      const APP_VERSION = '0.9.8';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -1118,11 +1118,22 @@
                                     const MIC_SILENCE_MS = 1500;
 
                     function flushMicText() {
-                      const t = micFinalText;
+                      const t = micFinalText.trim();
                       micFinalText = '';
                       micSilenceTimer = null;
-                      micSending = false;
-                      if (t) handleUser(t, 'voice');
+                      if (!t) {
+                        micSending = false;
+                        return false;
+                      }
+                      // From here, handleUser owns the UI state. Recognition
+                      // cleanup events can still fire after stop()/natural end,
+                      // but they must not switch Mori from thinking back to idle
+                      // or reopen the mic while the answer is being generated.
+                      micSending = true;
+                      Promise.resolve(handleUser(t, 'voice')).finally(() => {
+                        micSending = false;
+                      });
+                      return true;
                     }
 
                     function setupRecognitionHandlers(recog) {
@@ -1169,15 +1180,13 @@
                                             // stopListening() and set micSending=true — just clean up.
                                             if (micSending) {
                                               micFinalText = '';
-                                              setMode('idle');
-                                              if (state.handsFree) startWakeWord();
                                               return;
                                             }
                                             // Session ended naturally — flush whatever we have
                                             if (micFinalText) {
                                               // Clear the silence timer so it doesn't fire after we already sent
                                               if (micSilenceTimer) { clearTimeout(micSilenceTimer); micSilenceTimer = null; }
-                                              flushMicText();
+                                              if (flushMicText()) return;
                                             }
                                             setMode('idle');
                                             // Restart active dictation only when explicit continuous mic is enabled.
@@ -1207,7 +1216,10 @@
                   }
                   if (state.mode === 'listening') {
                     // Tap again — stop and send what we have
-                    if (micFinalText) handleUser(micFinalText, 'voice');
+                    if (micFinalText && flushMicText()) {
+                      stopListening();
+                      return;
+                    }
                     micFinalText = '';
                     stopListening();
                     return;
