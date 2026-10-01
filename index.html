@@ -386,7 +386,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.9';
+      const APP_VERSION = '0.9.10';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -1113,9 +1113,12 @@
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             let recognition = null;
                     let micFinalText = '';
-                                    let micSilenceTimer = null;
-                                    let micSending = false;
-                                    const MIC_SILENCE_MS = 1500;
+                    let micSilenceTimer = null;
+                    let micSending = false;
+                    const MIC_SILENCE_MS = 1500;
+                    let earlyEndCount = 0;
+                    const MAX_EARLY_ENDS = 2;
+                    let tapStopRequested = false;
 
                     function flushMicText() {
                       const t = micFinalText.trim();
@@ -1186,8 +1189,20 @@
                                             if (micFinalText) {
                                               // Clear the silence timer so it doesn't fire after we already sent
                                               if (micSilenceTimer) { clearTimeout(micSilenceTimer); micSilenceTimer = null; }
+                                              earlyEndCount = 0;
                                               if (flushMicText()) return;
                                             }
+                                            // Session ended with no text captured. On Android, Chrome
+                                            // occasionally kills a fresh session before any speech is
+                                            // heard. Retry a couple of times before giving up, so a
+                                            // randomly-dead session doesn't look like the mic is broken.
+                                            if (!tapStopRequested && earlyEndCount < MAX_EARLY_ENDS) {
+                                              earlyEndCount++;
+                                              setTimeout(() => listen(), 150);
+                                              return;
+                                            }
+                                            earlyEndCount = 0;
+                                            tapStopRequested = false;
                                             setMode('idle');
                                             // Restart active dictation only when explicit continuous mic is enabled.
                                             // Hands-free should return to wake-word mode instead; restarting listen()
@@ -1204,6 +1219,7 @@
                                             if (micSilenceTimer) { clearTimeout(micSilenceTimer); micSilenceTimer = null; }
                                             micFinalText = '';
                                             micSending = false;
+                                            earlyEndCount = 0;
                                             setMode('idle');
                                             if (state.handsFree) startWakeWord();
                                           };
@@ -1236,6 +1252,7 @@
                   micFinalText = '';
                                     micSending = false;
                                                       if (micSilenceTimer) { clearTimeout(micSilenceTimer); micSilenceTimer = null; }
+                  tapStopRequested = false;
 
                   recognition = new SpeechRecognition();
                   setupRecognitionHandlers(recognition);
@@ -1255,6 +1272,7 @@
 
                 function stopListening() {
                   if (micSilenceTimer) { clearTimeout(micSilenceTimer); micSilenceTimer = null; }
+                  tapStopRequested = true;
                   if (recognition) {
                     try { recognition.stop(); } catch (e) {}
                     recognition = null;
@@ -1278,10 +1296,13 @@
             for (let i = e.resultIndex; i < e.results.length; i++) {
               const text = e.results[i][0].transcript.toLowerCase().trim();
               // Check both interim and final for faster response
-              if (/\bhey (mori|morey|mory|maury)\b/.test(text)) {
+              // Match the wake phrase at the front of the utterance only.
+              // Unanchored matching fired on ambient conversation that the
+              // engine happened to transcribe with "hey ..mori" anywhere in it.
+              if (/^\s*(so\s+|i mean\s+|okay?\s+)?hey\s+(mori|morey|mory|maury)[\s,.]/.test(text)) {
                 // If this was a final result, process it; otherwise wait for final
                 if (e.results[i].isFinal) {
-                  const afterWake = text.replace(/\bhey (?:mori|morey|mory|maury)\b/i, '').trim();
+                  const afterWake = text.replace(/^(so\s+|i mean\s+|okay?\s+)?hey\s+(?:mori|morey|mory|maury)[\s,.]?\s*/i, '').trim();
                   if (afterWake) {
                     handleUser(afterWake, 'voice');
                   } else {

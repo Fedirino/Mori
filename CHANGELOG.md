@@ -1,4 +1,11 @@
 # Changelog
+## [0.9.10] - 2026-10-01
+
+### Fixed
+- Tap-to-mic: retry a fresh session up to two times when Android Chrome kills it before capturing any speech, so a randomly-dead session no longer looks like the mic silently failing.
+- Hands-free wake word now only fires when "hey mori" (and its known mishearings morey/mory/maury) is at the start of the utterance, cutting down false wake-ups from ambient conversation.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.10` so installed PWAs pick up the fixes.
+
 ## [0.9.9] - 2026-09-30
 
 ### Fixed
