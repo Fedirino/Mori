@@ -386,7 +386,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.8';
+      const APP_VERSION = '0.9.9';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -658,7 +658,7 @@
                             applyPersona();
                             closeSettings();
                             // Restart or stop wake word based on new setting
-                            if (state.handsFree) { stopWakeWord(); setTimeout(() => startWakeWord(), 200); }
+                            if (state.handsFree) { stopWakeWord(false); setTimeout(() => startWakeWord(), 200); }
                             else { stopWakeWord(); }
                             showToast('Saved');
             }
@@ -1249,7 +1249,7 @@
                     setMode('idle');
                     recognition = null;
                     showToast('Could not start voice input. Check microphone permission.');
-                    if (state.handsFree) startWakeWord();
+                    if (state.handsFree) setTimeout(() => startWakeWord(), 850);
                   }
                 }
 
@@ -1264,9 +1264,11 @@
 
         // ---------- hands-free wake word ----------
         let wakeRecognition = null;
+        let wakeRestartSuppressedUntil = 0;
 
         function startWakeWord() {
           if (!state.handsFree || !SpeechRecognition) return;
+          if (Date.now() < wakeRestartSuppressedUntil) return;
           if (wakeRecognition) return;
           wakeRecognition = new SpeechRecognition();
           wakeRecognition.continuous = true;
@@ -1292,16 +1294,19 @@
           wakeRecognition.onend = () => {
             // Browser killed the session — restart if still wanted
             wakeRecognition = null;
+            if (Date.now() < wakeRestartSuppressedUntil) return;
             if (state.handsFree && state.mode === 'idle' && !state.listening) startWakeWord();
           };
           wakeRecognition.onerror = () => {
             wakeRecognition = null;
+            if (Date.now() < wakeRestartSuppressedUntil) return;
             if (state.handsFree) setTimeout(() => startWakeWord(), 300);
           };
           try { wakeRecognition.start(); } catch (e) { wakeRecognition = null; }
         }
 
-        function stopWakeWord() {
+        function stopWakeWord(suppressRestart = true) {
+          if (suppressRestart) wakeRestartSuppressedUntil = Date.now() + 800;
           if (wakeRecognition) {
             try { wakeRecognition.stop(); } catch (e) {}
             wakeRecognition = null;

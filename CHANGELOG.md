@@ -1,4 +1,10 @@
 # Changelog
+## [0.9.9] - 2026-09-30
+
+### Fixed
+- Fixed hands-free wake-word recognition racing tap-to-mic startup. Intentional wake-word stops now suppress auto-restart briefly, preventing the UI from flickering between idle and listening when the browser mic session is activated.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.9` so installed PWAs pick up the wake-word race fix.
+
 ## [0.9.8] - 2026-09-30
 
 ### Fixed
