@@ -310,6 +310,8 @@
   </main>
 
   <div class="toast" id="toast"><span class="dot" aria-hidden="true"></span><span id="toast-text"></span></div>
+  <pre id="debugOverlay" hidden></pre>
+  <style>#debugOverlay{position:fixed;left:0;right:0;bottom:0;max-height:45vh;overflow:auto;z-index:9999;background:rgba(0,0,0,.82);color:#9ff;font:10px/1.35 monospace;padding:8px 10px;white-space:pre-wrap;word-break:break-word;}</style>
 
   <div class="scrim" id="scrim"></div>
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Mori settings">
@@ -386,7 +388,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.10';
+      const APP_VERSION = '0.9.11';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -557,13 +559,13 @@
         }
 
     function showToast(message) {
-      els.toastText.textContent = message;
-      els.toast.classList.add('show');
-      clearTimeout(window._toastTimer);
-      window._toastTimer = setTimeout(() => els.toast.classList.remove('show'), 3000);
-    }
+          els.toastText.textContent = message;
+          els.toast.classList.add('show');
+          clearTimeout(showToast._t);
+          showToast._t = setTimeout(() => els.toast.classList.remove('show'), 2600);
+        }
 
-    function registerAppUpdater() {
+        function registerAppUpdater() {
       if (!('serviceWorker' in navigator)) return;
 
       let refreshing = false;
@@ -1111,6 +1113,24 @@
 
     // ---------- speech recognition ----------
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const debugOverlay = document.getElementById('debugOverlay');
+            const dbgLog = [];
+            function dbgPush(kind, text) {
+              const stamp = new Date().toLocaleTimeString();
+              dbgLog.push(stamp + '  ' + kind + ': ' + (text || ''));
+              if (dbgLog.length > 60) dbgLog.shift();
+              if (debugOverlay) debugOverlay.textContent = dbgLog.join('\n');
+            }
+            let debugTaps = 0, debugTapTimer = null;
+            function maybeToggleDebug() {
+              debugTaps++;
+              if (debugTapTimer) clearTimeout(debugTapTimer);
+              debugTapTimer = setTimeout(() => { debugTaps = 0; }, 1500);
+              if (debugTaps >= 6) {
+                debugTaps = 0;
+                if (debugOverlay) debugOverlay.hidden = !debugOverlay.hidden;
+              }
+            }
             let recognition = null;
                     let micFinalText = '';
                     let micSilenceTimer = null;
@@ -1163,8 +1183,9 @@
                                               }
                                             }
                                             if (accumulated) micFinalText = accumulated;
+                                                                dbgPush('tap-result', accumulated);
 
-                                            // Silence timer — if user pauses mid-sentence (e.g.
+                                                                // Silence timer — if user pauses mid-sentence (e.g.
                                             // "hello how [pause] are you"), this prevents sending
                                             // the partial text until 1.5s of true silence.
                                             if (micSilenceTimer) clearTimeout(micSilenceTimer);
@@ -1178,6 +1199,7 @@
                                           };
 
                                           recog.onend = () => {
+                                            dbgPush('tap-end', micFinalText || '(empty)');
                                             state.listening = false;
                                             // If the silence timer already fired, it called
                                             // stopListening() and set micSending=true — just clean up.
@@ -1283,6 +1305,7 @@
         // ---------- hands-free wake word ----------
         let wakeRecognition = null;
         let wakeRestartSuppressedUntil = 0;
+        let wakeProcessedIndex = 0;
 
         function startWakeWord() {
           if (!state.handsFree || !SpeechRecognition) return;
@@ -1293,22 +1316,31 @@
           wakeRecognition.interimResults = true;
           wakeRecognition.lang = 'en-US';
           wakeRecognition.onresult = (e) => {
-            for (let i = e.resultIndex; i < e.results.length; i++) {
+            // Re-check from the last segment we saw. Chrome's continuous
+            // recognizer sends interim and final values for the same index,
+            // and a wake phrase can first appear as interim then finalize.
+            const start = Math.min(e.resultIndex, wakeProcessedIndex);
+            for (let i = start; i < e.results.length; i++) {
               const text = e.results[i][0].transcript.toLowerCase().trim();
-              // Check both interim and final for faster response
-              // Match the wake phrase at the front of the utterance only.
-              // Unanchored matching fired on ambient conversation that the
-              // engine happened to transcribe with "hey ..mori" anywhere in it.
-              if (/^\s*(so\s+|i mean\s+|okay?\s+)?hey\s+(mori|morey|mory|maury)[\s,.]/.test(text)) {
-                // If this was a final result, process it; otherwise wait for final
-                if (e.results[i].isFinal) {
-                  const afterWake = text.replace(/^(so\s+|i mean\s+|okay?\s+)?hey\s+(?:mori|morey|mory|maury)[\s,.]?\s*/i, '').trim();
-                  if (afterWake) {
-                    handleUser(afterWake, 'voice');
-                  } else {
+              dbgPush('wake[' + i + ']', text + (e.results[i].isFinal ? ' [final]' : ' [interim]'));
+              const m = text.match(/^\s*(so\s+|i mean\s+|okay?\s+)?hey\s+(mori|morey|mory|maury)[\s,.]?\s*(.*)$/);
+              if (m) {
+                const afterWake = (m[3] || '').trim();
+                if (afterWake) {
+                  wakeProcessedIndex = i + 1;
+                  handleUser(afterWake, 'voice');
+                } else {
+                  // "hey mori" with nothing after yet — keep waiting for the
+                  // command on the same segment, but if this segment finalizes
+                  // empty, open the mic.
+                  wakeProcessedIndex = i;
+                  if (e.results[i].isFinal) {
+                    wakeProcessedIndex = i + 1;
                     listen();
                   }
                 }
+              } else {
+                wakeProcessedIndex = i + 1;
               }
             }
           };
@@ -1341,7 +1373,7 @@
               }
 
               // ---------- events ----------
-                  els.mic.addEventListener('click', listen);
+                  els.mic.addEventListener('click', () => { maybeToggleDebug(); listen(); });
     if (els.composer) {
       els.composer.addEventListener('submit', (e) => {
         e.preventDefault();

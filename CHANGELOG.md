@@ -1,4 +1,13 @@
 # Changelog
+## [0.9.11] - 2026-10-01
+
+### Fixed
+- Wake word can now detect "hey mori" when it first arrives as an interim (non-final) segment, by re-checking the last segment on every new result instead of skipping it after one look.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.11`.
+
+### Debugging aids
+- Added a hidden on-device speech debugger that logs every tap-recognition and wake-word transcript event. Tap the mic button 6 times quickly to toggle the overlay (tap it, not to invoke), so real captured text can be read back instead of guessing at regex behavior.
+
 ## [0.9.10] - 2026-10-01
 
 ### Fixed
