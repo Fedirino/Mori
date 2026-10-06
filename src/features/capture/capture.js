@@ -6,7 +6,7 @@ export const CORE_PROJECTS = [
   'Signal Ghost',
   'Clarity',
   'PDP',
-  'Mori'
+  'Winston'
 ];
 
 const WEEKDAYS = {

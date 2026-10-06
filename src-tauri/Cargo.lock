@@ -4738,7 +4738,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mori"
+name = "winston"
 version = "0.1.0"
 dependencies = [
  "log",

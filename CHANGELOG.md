@@ -1,4 +1,13 @@
 # Changelog
+## [0.9.12] - 2026-10-05
+
+### Changed
+- Switched the app identity and wake word back to **Winston** because browser speech recognition kept hearing "Mori" as "Maury". The hands-free trigger now listens for "hey Winston" with the old Winston mishearing variants instead of Mori/Maury.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.12`.
+
+### Fixed
+- Fixed continuous mic mode getting stuck after a spoken response: empty/dead recognition sessions and manual tap-to-stop no longer auto-reopen the mic. Continuous mode only reopens after a reply finishes speaking.
+
 ## [0.9.11] - 2026-10-01
 
 ### Fixed

@@ -1,8 +1,8 @@
-# Mori
+# Winston
 
 Voice-first AI assistant — a public PWA that routes speech and text through a secure cloud relay to a private Hermes Agent backend.
 
-> Formerly "Kyo". Renamed for easier voice/wake-word recognition.
+> Formerly "Kyo", briefly "Mori". Switched back to Winston because browser speech recognition kept hearing Mori as "Maury".
 
 ## Architecture
 
