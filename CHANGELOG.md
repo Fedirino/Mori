@@ -1,4 +1,11 @@
 # Changelog
+## [0.9.14] - 2026-10-05
+
+### Changed
+- Disabled continuous mic conversation entirely. After Winston replies, the app returns to idle/wake-word mode instead of reopening active dictation.
+- Removed the continuous mic setting from Settings and force-saves the old `kyo.continuous` flag to off.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.14`.
+
 ## [0.9.13] - 2026-10-05
 
 ### Fixed

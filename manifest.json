@@ -1,12 +1,12 @@
 {
   "name": "Winston",
   "short_name": "Winston",
-  "start_url": "/?v=0.9.13",
+  "start_url": "/?v=0.9.14",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0e0e11",
   "theme_color": "#0e0e11",
-  "version": "0.9.13",
+  "version": "0.9.14",
   "icons": [
     {
       "src": "/icon-192.png",

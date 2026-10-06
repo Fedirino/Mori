@@ -305,7 +305,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.13</span>
+      <span id="ver-tag">Winston v0.9.14</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -339,12 +339,7 @@
       <option value="0">Off — tap to talk</option>
       <option value="1">On — say "hey Winston"</option>
     </select>
-    <label for="continuous">Continuous Mic Conversation</label>
-    <select id="continuous">
-      <option value="0">Off — one turn at a time</option>
-      <option value="1">On — reopen mic after each reply</option>
-    </select>
-    <p class="small" id="ttskey-note">Voice input uses the browser and varies by device.</p>
+    <p class="small" id="ttskey-note">Voice input uses the browser and varies by device. After a reply, Winston returns to wake-word mode instead of reopening the mic.</p>
     <div class="row">
       <button id="cancel-btn">Cancel</button>
       <button id="save-btn" class="primary">Save</button>
@@ -389,7 +384,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.13';
+      const APP_VERSION = '0.9.14';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -402,7 +397,7 @@
                   voiceName: localStorage.getItem('kyo.voice') || '',
                   elevenVoice: localStorage.getItem('kyo.elevenVoice') || DEFAULT_ELEVEN_VOICE_ID,
                   handsFree: localStorage.getItem('kyo.handsFree') === '1',
-                  continuous: localStorage.getItem('kyo.continuous') === '1',
+                  continuous: false,
                   persona: initPersona,
               mode: 'idle',
                                   messages: [{ role: 'system', content: kyoSystemPrompt(initPersona) }],
@@ -651,13 +646,14 @@
               state.elevenVoice = els.elevenVoice.value.trim() || DEFAULT_ELEVEN_VOICE_ID;
               state.voiceName = els.voiceSel.value;
               state.handsFree = els.handsFree.value === '1';
-              state.continuous = els.continuous.value === '1';
+              state.continuous = false;
+              if (els.continuous) els.continuous.value = '0';
               state.persona = els.personaSel.value;
               localStorage.setItem('kyo.model', state.model);
               localStorage.setItem('kyo.voice', state.voiceName);
               localStorage.setItem('kyo.elevenVoice', state.elevenVoice);
               localStorage.setItem('kyo.handsFree', state.handsFree ? '1' : '0');
-              localStorage.setItem('kyo.continuous', state.continuous ? '1' : '0');
+              localStorage.setItem('kyo.continuous', '0');
               localStorage.setItem('kyo.persona', state.persona);
                             applyPersona();
                             closeSettings();
@@ -1089,7 +1085,6 @@
                   setMode('idle');
                   URL.revokeObjectURL(url);
                   state.audio = null;
-                  if (state.continuous && state.mode === 'idle') setTimeout(() => listen(), 400);
                           });
                           audio.play().catch(() => { setMode('idle'); });
       } catch (e) {
@@ -1107,7 +1102,6 @@
       u.pitch = 1.05;
       u.onend = () => {
                     setMode('idle');
-                    if (state.continuous && state.mode === 'idle') setTimeout(() => listen(), 400);
                   };
              u.onerror = () => setMode('idle');
       synth.speak(u);
