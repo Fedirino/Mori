@@ -1,4 +1,10 @@
 # Changelog
+## [0.9.13] - 2026-10-05
+
+### Fixed
+- Centered the Winston wordmark in the top bar while keeping the status/settings controls on the right, so the header no longer reads as off-center after switching back from the shorter Mori name.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.13`.
+
 ## [0.9.12] - 2026-10-05
 
 ### Changed

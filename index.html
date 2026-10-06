@@ -61,8 +61,9 @@
           filter: drop-shadow(0 0 8px rgba(255,140,66,0.2)); }
         .brand .gs { display: none; }
 
-    .topline { display: flex; justify-content: space-between; align-items: center; }
-    .topright { display: flex; align-items: center; gap: 12px; }
+    .topline { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+    .topline .brand { grid-column: 2; justify-self: center; }
+    .topright { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: 12px; }
     .pip { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,140,66,0.4); transition: all .4s; }
     [data-state="listening"] .pip, [data-state="speaking"] .pip { background: var(--amber); box-shadow: 0 0 14px rgba(255,140,66,0.8); }
     [data-state="thinking"] .pip { background: var(--amber-hot); animation: pipblink 0.8s ease-in-out infinite; }
@@ -304,7 +305,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.12</span>
+      <span id="ver-tag">Winston v0.9.13</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -388,7 +389,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.12';
+      const APP_VERSION = '0.9.13';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
