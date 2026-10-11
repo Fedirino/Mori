@@ -27,6 +27,7 @@ const ALLOWED_MODELS = new Set([
 ]);
 
 const requestWindows = new Map();
+const DEFAULT_HERMES_MODEL = 'kyo';
 
 function json(res, status, body) {
   res.status(status).set('Cache-Control', 'no-store').json(body);
@@ -92,7 +93,7 @@ async function handleChat(req, res, sessionKey) {
       method: 'POST',
       headers: runHeaders,
       body: JSON.stringify({
-        model: 'kyo',
+        model: DEFAULT_HERMES_MODEL,
         input: input.slice(0, 60_000),
         session_id: sessionKey ? ('winston-conv-' + sessionKey.replace(/[^A-Za-z0-9_-]/g, '')) : undefined,
         max_tokens: Math.min(1000, Math.max(80, Number(req.body.max_tokens) || 220)),
@@ -112,6 +113,8 @@ async function handleChat(req, res, sessionKey) {
   const deadline = Date.now() + 110_000;
   let fullOutput = '';
   const toolCalls = [];
+  const toolById = new Map();
+  let processedEventCount = 0;
   let done = false;
 
   while (Date.now() < deadline && !done) {
@@ -137,8 +140,15 @@ async function handleChat(req, res, sessionKey) {
         break;
       }
       const raw = await eventsResp.text();
-      // Parse SSE-style data: lines
-      for (const line of raw.split('\n')) {
+      const eventLines = raw.split('\n').filter(line => line.startsWith('data: '));
+      const freshEventLines = eventLines.length >= processedEventCount
+        ? eventLines.slice(processedEventCount)
+        : eventLines;
+      processedEventCount = eventLines.length;
+
+      // Parse SSE-style data lines. Hermes returns the event log on each poll,
+      // so only process newly-seen entries or deltas/tool cards duplicate.
+      for (const line of freshEventLines) {
         if (!line.startsWith('data: ')) continue;
         const payload = line.slice(6).trim();
         if (!payload) continue;
@@ -152,22 +162,26 @@ async function handleChat(req, res, sessionKey) {
           } else if (event.event === 'reasoning.available') {
             // Reasoning text — can use as-is or append
           } else if (event.event === 'tool.started') {
-            toolCalls.push({
+            const id = String(event.id || event.tool_call_id || event.call_id || toolCalls.length);
+            const toolCall = {
+              id,
               tool: event.tool || 'tool',
               arguments: event.preview || '',
               status: 'running',
-              latency: null
-            });
+              latency: null,
+              result: ''
+            };
+            toolById.set(id, toolCall);
+            toolCalls.push(toolCall);
           } else if (event.event === 'tool.completed') {
-            // Update the last matching tool
-            const lastRunning = toolCalls.filter(t => t.status === 'running').length;
-            if (lastRunning > 0) {
-              for (let i = toolCalls.length - 1; i >= 0; i--) {
-                if (toolCalls[i].status === 'running') {
-                  toolCalls[i].status = event.error ? 'error' : 'success';
-                  toolCalls[i].latency = event.duration ? Math.round(event.duration * 1000) : null;
-                  break;
-                }
+            const id = String(event.id || event.tool_call_id || event.call_id || '');
+            const target = (id && toolById.get(id)) || [...toolCalls].reverse().find(t => t.status === 'running');
+            if (target) {
+              target.status = event.error ? 'error' : 'success';
+              target.latency = event.duration ? Math.round(event.duration * 1000) : null;
+              const result = event.result || event.output || event.preview || '';
+              if (typeof result === 'string') {
+                target.result = result.slice(0, 1000);
               }
             }
           }
@@ -187,7 +201,8 @@ async function handleChat(req, res, sessionKey) {
   }
 
   return json(res, 200, {
-    reply: trimmed || fullOutput || '…',
+    reply: fullOutput || trimmed || '…',
+    speech_reply: trimmed || fullOutput || '…',
     tool_calls: toolCalls
   });
 }

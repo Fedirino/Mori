@@ -1,4 +1,12 @@
 # Changelog
+## [0.9.15] - 2026-10-11
+
+### Fixed
+- Switched manual tap-to-talk to the cloud transcription path when signed in, keeping browser speech recognition for the hands-free wake word. This makes the mic button behave like a reliable record/stop control instead of depending on spotty live browser dictation.
+- Hardened Hermes tool-event parsing so repeated event-log polls do not duplicate message deltas or tool cards.
+- Kept full Hermes replies for the visual transcript while returning a separate compact `speech_reply` for TTS.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.15`.
+
 ## [0.9.14] - 2026-10-05
 
 ### Changed

@@ -305,7 +305,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.14</span>
+      <span id="ver-tag">Winston v0.9.15</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -384,7 +384,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.14';
+      const APP_VERSION = '0.9.15';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -692,7 +692,7 @@
                                   els.transcript.appendChild(renderToolCallCard(tc));
                                 }
                                 addLine('kyo', reply || raw, true);
-                                                                if (state.persona !== 'signal-ghost') speak(stripForTTS(reply || raw));
+                                if (state.persona !== 'signal-ghost') speak(stripForTTS(data.speech_reply || reply || raw));
                                                                 else setMode('idle');
                                 if (action) runAction(action);
               } catch (e) {
@@ -846,6 +846,21 @@
         let mediaRecorderChunks = [];
         let mediaStream = null;
         let transcribing = false;
+        let mediaStopTimer = null;
+
+        function manualVoiceInput(trackDebugTap = true) {
+          if (trackDebugTap) maybeToggleDebug();
+          if (mediaRecorder && mediaRecorder.state === 'recording') {
+            stopMediaRecording();
+            return;
+          }
+          if (transcribing || state.mode === 'speaking') return;
+          if (hasCloudSession() && navigator.mediaDevices && window.MediaRecorder) {
+            startMediaRecording();
+            return;
+          }
+          listen();
+        }
 
         async function startMediaRecording() {
           if (transcribing) return;
@@ -854,32 +869,58 @@
             return;
           }
           if (state.mode === 'speaking') return;
+          stopWakeWord();
           try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaStream = stream;
             mediaRecorderChunks = [];
-            const recorder = new MediaRecorder(stream);
+            const preferredType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : '';
+            const recorder = preferredType ? new MediaRecorder(stream, { mimeType: preferredType }) : new MediaRecorder(stream);
             mediaRecorder = recorder;
             recorder.ondataavailable = (e) => {
               if (e.data.size > 0) mediaRecorderChunks.push(e.data);
             };
             recorder.onstop = async () => {
+              if (mediaStopTimer) { clearTimeout(mediaStopTimer); mediaStopTimer = null; }
               stream.getTracks().forEach(t => t.stop());
               mediaStream = null;
-              if (mediaRecorderChunks.length === 0) return;
+              state.listening = false;
+              if (mediaRecorderChunks.length === 0) {
+                transcribing = false;
+                setMode('idle');
+                if (state.handsFree) setTimeout(() => startWakeWord(), 300);
+                return;
+              }
               const blob = new Blob(mediaRecorderChunks, { type: recorder.mimeType || 'audio/webm' });
               mediaRecorderChunks = [];
               await transcribeAudio(blob);
             };
             recorder.onerror = () => {
+              if (mediaStopTimer) { clearTimeout(mediaStopTimer); mediaStopTimer = null; }
               stream.getTracks().forEach(t => t.stop());
               mediaStream = null;
+              mediaRecorder = null;
+              state.listening = false;
+              transcribing = false;
               setMode('idle');
+              if (state.handsFree) setTimeout(() => startWakeWord(), 300);
             };
             recorder.start();
+            state.listening = true;
             setMode('listening');
+            mediaStopTimer = setTimeout(() => {
+              if (mediaRecorder && mediaRecorder.state === 'recording') stopMediaRecording();
+            }, 45000);
           } catch (e) {
+            state.listening = false;
+            mediaRecorder = null;
+            if (mediaStream) {
+              mediaStream.getTracks().forEach(t => t.stop());
+              mediaStream = null;
+            }
             showToast('Microphone access denied. Check browser permissions.');
+            setMode('idle');
+            if (state.handsFree) setTimeout(() => startWakeWord(), 850);
           }
         }
 
@@ -906,15 +947,21 @@
               transcribing = false;
               setMode('idle');
               if (text) handleUser(text, 'voice');
+              else {
+                showToast('No speech detected.');
+                if (state.handsFree) setTimeout(() => startWakeWord(), 300);
+              }
             } else {
               transcribing = false;
               setMode('idle');
               showToast('Sign in for voice transcription');
+              if (state.handsFree) setTimeout(() => startWakeWord(), 300);
             }
           } catch (e) {
             transcribing = false;
             setMode('idle');
             showToast('Transcription failed');
+            if (state.handsFree) setTimeout(() => startWakeWord(), 300);
           }
         }
 
@@ -926,7 +973,11 @@
                 temperature: 0.6
               };
               const data = await cloud.chat(body);
-              return { reply: String(data.reply || '').trim() || '…', tool_calls: data.tool_calls || [] };
+              return {
+                reply: String(data.reply || '').trim() || '…',
+                speech_reply: String(data.speech_reply || data.reply || '').trim(),
+                tool_calls: data.tool_calls || []
+              };
             }
 
     function runAction(action) {
@@ -1332,7 +1383,7 @@
                   wakeProcessedIndex = i;
                   if (e.results[i].isFinal) {
                     wakeProcessedIndex = i + 1;
-                    listen();
+                    manualVoiceInput(false);
                   }
                 }
               } else {
@@ -1369,7 +1420,7 @@
               }
 
               // ---------- events ----------
-                  els.mic.addEventListener('click', () => { maybeToggleDebug(); listen(); });
+                  els.mic.addEventListener('click', () => manualVoiceInput(true));
     if (els.composer) {
       els.composer.addEventListener('submit', (e) => {
         e.preventDefault();
