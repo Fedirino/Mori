@@ -1,4 +1,11 @@
 # Changelog
+## [0.9.19] - 2026-10-11
+
+### Changed
+- Restyled Hermes tool calls as readable activity rows with visible tool names, status, latency, and compact summaries instead of tiny collapsed clipboard buttons or empty bars.
+- Tool call details now show only when arguments/results exist and open by default, while empty detail shells are omitted.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.19`.
+
 ## [0.9.18] - 2026-10-11
 
 ### Fixed

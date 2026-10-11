@@ -119,26 +119,30 @@
         .streaming-dots .phase { font-size: 12px; font-weight: 300; color: var(--dim); letter-spacing: 0.06em; }
 
         /* ===== tool call cards ===== */
-        .toolcall-card { margin: 6px 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--hair);
-          background: rgba(0,0,0,0.15); font-size: 12.5px; animation: rise .3s ease both; }
-        .toolcall-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+        .toolcall-card { margin: 8px 0 10px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,140,66,0.16);
+          background: rgba(255,140,66,0.045); font-size: 12.5px; animation: rise .3s ease both;
+          box-shadow: 0 10px 26px rgba(0,0,0,0.18); }
+        .toolcall-card.success { border-color: rgba(74,222,128,0.22); background: rgba(74,222,128,0.035); }
+        .toolcall-card.error { border-color: rgba(239,68,68,0.28); background: rgba(239,68,68,0.055); }
+        .toolcall-header { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 10px 12px;
           cursor: pointer; user-select: none; width: 100%; background: transparent; border: 0; color: var(--ink);
           font-family: inherit; font-size: inherit; text-align: left; }
         .toolcall-header:hover { background: rgba(255,140,66,0.04); }
-        .toolcall-chevron { width: 14px; height: 14px; flex: 0 0 auto; color: var(--dim); transition: transform .2s; }
-        .toolcall-chevron.open { transform: rotate(90deg); }
-        .toolcall-status { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+        .toolcall-status { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
         .toolcall-status.running { background: var(--amber); animation: pipblink 0.8s ease-in-out infinite; }
-        .toolcall-status.success { background: #4ade80; box-shadow: 0 0 6px rgba(74,222,128,0.5); }
-        .toolcall-status.error { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.5); }
-        .toolcall-name { font-weight: 500; color: var(--ink); flex: 0 0 auto; }
-        .toolcall-args-preview { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
-        .toolcall-latency { color: var(--dim); font-size: 10.5px; font-family: var(--mono); flex: 0 0 auto; }
+        .toolcall-status.success { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,0.5); }
+        .toolcall-status.error { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+        .toolcall-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .toolcall-title { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+        .toolcall-name { font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .toolcall-state { color: var(--dim); font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.12em; }
+        .toolcall-summary { color: rgba(245,239,233,0.58); font-size: 11.5px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .toolcall-latency { color: var(--dim); font-size: 10.5px; font-family: var(--mono); }
         .toolcall-body { border-top: 1px solid var(--hair); padding: 8px 12px 10px; }
         .toolcall-section-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 4px; }
-        .toolcall-body pre { background: rgba(0,0,0,0.3); border: 1px solid var(--hair); border-radius: 6px;
+        .toolcall-body pre { background: rgba(0,0,0,0.24); border: 1px solid var(--hair); border-radius: 7px;
           padding: 8px 10px; font-family: var(--mono); font-size: 11px; line-height: 1.4;
-          overflow-x: auto; white-space: pre-wrap; word-break: break-all; color: var(--ink); margin: 0 0 8px; max-height: 120px; }
+          overflow-x: auto; white-space: pre-wrap; word-break: break-word; color: var(--ink); margin: 0 0 8px; max-height: 160px; }
         .toolcall-body pre:last-child { margin-bottom: 0; }
 
         /* ===== mic recording animation ===== */
@@ -305,7 +309,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.18</span>
+      <span id="ver-tag">Winston v0.9.19</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -384,7 +388,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.18';
+      const APP_VERSION = '0.9.19';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -762,37 +766,39 @@
         // ---------- tool call cards ----------
         function renderToolCallCard(toolCall) {
           const card = document.createElement('div');
-          card.className = 'toolcall-card';
+          const status = toolCall.status || 'running';
+          card.className = 'toolcall-card ' + status;
 
           const header = document.createElement('button');
           header.className = 'toolcall-header';
           header.type = 'button';
 
-          let expanded = false;
-
-          const chevron = document.createElement('span');
-          chevron.className = 'toolcall-chevron';
-          chevron.textContent = '▶';
-
           const statusDot = document.createElement('span');
-          statusDot.className = 'toolcall-status ' + (toolCall.status || 'running');
+          statusDot.className = 'toolcall-status ' + status;
+
+          const main = document.createElement('span');
+          main.className = 'toolcall-main';
+
+          const title = document.createElement('span');
+          title.className = 'toolcall-title';
 
           const nameSpan = document.createElement('span');
           nameSpan.className = 'toolcall-name';
-          nameSpan.textContent = toolCall.tool || 'tool';
+          nameSpan.textContent = cleanToolName(toolCall.tool || 'tool');
 
-          const preview = document.createElement('span');
-          preview.className = 'toolcall-args-preview';
-          try {
-            const parsed = JSON.parse(toolCall.arguments || '{}');
-            const entries = Object.entries(parsed);
-            if (entries.length > 0) {
-              const [k, v] = entries[0];
-              const val = typeof v === 'string' ? v : JSON.stringify(v);
-              preview.textContent = entries.length === 1 ? k + ': ' + val.slice(0, 40) + (val.length > 40 ? '…' : '') : k + ': ' + val.slice(0, 30) + ', …';
-            }
-          } catch (e) {
-            preview.textContent = (toolCall.arguments || '').slice(0, 60);
+          const stateSpan = document.createElement('span');
+          stateSpan.className = 'toolcall-state';
+          stateSpan.textContent = status === 'success' ? 'done' : status === 'error' ? 'failed' : 'running';
+
+          title.append(nameSpan, stateSpan);
+
+          const summary = document.createElement('span');
+          summary.className = 'toolcall-summary';
+          summary.textContent = toolSummary(toolCall);
+
+          main.append(title);
+          if (summary.textContent) {
+            main.append(summary);
           }
 
           const latency = document.createElement('span');
@@ -801,11 +807,10 @@
             latency.textContent = toolCall.latency < 1000 ? Math.round(toolCall.latency) + 'ms' : (toolCall.latency / 1000).toFixed(1) + 's';
           }
 
-          header.append(chevron, statusDot, nameSpan, preview, latency);
+          header.append(statusDot, main, latency);
 
           const body = document.createElement('div');
           body.className = 'toolcall-body';
-          body.style.display = 'none';
 
           if (toolCall.arguments) {
             const argsLabel = document.createElement('div');
@@ -831,14 +836,55 @@
             body.appendChild(pre);
           }
 
+          let expanded = body.children.length > 0;
+          body.style.display = expanded ? 'block' : 'none';
+          header.title = expanded ? 'Hide details' : 'No details available';
+
           header.addEventListener('click', () => {
+            if (!body.children.length) return;
             expanded = !expanded;
-            chevron.classList.toggle('open', expanded);
             body.style.display = expanded ? 'block' : 'none';
+            header.title = expanded ? 'Hide details' : 'Show details';
           });
 
-          card.append(header, body);
+          card.append(header);
+          if (body.children.length) card.append(body);
           return card;
+        }
+
+        function cleanToolName(name) {
+          return String(name || 'tool')
+            .replace(/^functions\./, '')
+            .replace(/^tools?\./, '')
+            .replace(/[_-]+/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
+        }
+
+        function toolSummary(toolCall) {
+          const fromArgs = summarizeToolPayload(toolCall.arguments);
+          if (fromArgs) return fromArgs;
+          const fromResult = summarizeToolPayload(toolCall.result);
+          if (fromResult) return fromResult;
+          if ((toolCall.status || 'running') === 'running') return 'Working...';
+          return '';
+        }
+
+        function summarizeToolPayload(payload) {
+          const raw = String(payload || '').trim();
+          if (!raw) return '';
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+              const entries = Object.entries(parsed).filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '');
+              if (!entries.length) return '';
+              return entries.slice(0, 2).map(([key, value]) => {
+                const label = key.replace(/[_-]+/g, ' ');
+                const text = typeof value === 'string' ? value : JSON.stringify(value);
+                return label + ': ' + text;
+              }).join(' · ').slice(0, 120);
+            }
+          } catch (e) {}
+          return raw.replace(/\s+/g, ' ').slice(0, 120);
         }
 
         // ---------- media recorder mic ----------
