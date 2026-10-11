@@ -337,6 +337,7 @@ async function handleTranscribe(req, res) {
   const audio = String((req.body && req.body.audio) || '').trim();
   const mime = String((req.body && req.body.mime) || 'audio/webm').trim().split(';')[0] || 'audio/webm';
   if (!audio || audio.length > 5_000_000) return json(res, 400, { error: 'Invalid audio.' });
+  const format = audioFormatFromMime(mime);
 
   const upstream = await fetch('https://openrouter.ai/api/v1/audio/transcriptions', {
     method: 'POST',
@@ -346,7 +347,7 @@ async function handleTranscribe(req, res) {
     },
     body: JSON.stringify({
       model: 'openai/whisper-large-v3',
-      audio: 'data:' + mime + ';base64,' + audio,
+      input_audio: { data: audio, format },
       response_format: 'json'
     })
   });
@@ -359,6 +360,17 @@ async function handleTranscribe(req, res) {
   const text = String((data && data.text) || '').trim();
   if (!text) return json(res, 502, { error: 'Transcription returned empty.' });
   return json(res, 200, { text });
+}
+
+function audioFormatFromMime(mime) {
+  const normalized = String(mime || '').toLowerCase();
+  if (normalized.includes('mpeg') || normalized.includes('mp3')) return 'mp3';
+  if (normalized.includes('mp4') || normalized.includes('m4a')) return 'm4a';
+  if (normalized.includes('ogg') || normalized.includes('opus')) return 'ogg';
+  if (normalized.includes('wav')) return 'wav';
+  if (normalized.includes('flac')) return 'flac';
+  if (normalized.includes('aac')) return 'aac';
+  return 'webm';
 }
 
 exports.api = onRequest({

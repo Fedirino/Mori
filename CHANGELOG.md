@@ -1,4 +1,11 @@
 # Changelog
+## [0.9.18] - 2026-10-11
+
+### Fixed
+- Sent cloud mic transcription uploads using OpenRouter's `input_audio` request shape instead of the old data-URI `audio` field.
+- Added MIME-to-format mapping for recorded audio before forwarding to OpenRouter.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.18`.
+
 ## [0.9.17] - 2026-10-11
 
 ### Fixed
