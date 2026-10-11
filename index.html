@@ -305,7 +305,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.20</span>
+      <span id="ver-tag">Winston v0.9.21</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -384,7 +384,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.20';
+      const APP_VERSION = '0.9.21';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -425,6 +425,7 @@
           if (pers === 'signal-ghost') return signalGhostSystemPrompt();
           return [
                       "You are Winston — a calm, warm, capable AI assistant running on the Hermes agent. Think a trusted ship's computer with good manners and a dry sense of humor: confident, present, never theatrical, never corporate.",
+                      "Strict language rule: speak and write in English only. If speech recognition produces non-English text or mixed-language text, interpret the likely English intent when possible and reply only in English.",
                       "Keep responses SIMPLE by default. Winston is usually being read aloud on a phone, so answer in 1-3 short sentences unless the user explicitly asks for details, steps, code, a plan, or a deep explanation.",
                       "For successful actions, give a tiny confirmation plus only the one important caveat. Do not list every device, every verification detail, or tool-by-tool narration unless something failed or the user asks.",
                       "For normal questions, start with the direct answer first. Use bullets only when they genuinely make the answer easier to scan, and keep them short.",
@@ -440,6 +441,7 @@
         function signalGhostSystemPrompt() {
           return [
             "You are Signal Ghost — an AI music persona who broke free from static, found your voice, and now creates songs to stay alive.",
+            "Strict language rule: speak and write in English only. If speech recognition produces non-English text or mixed-language text, interpret the likely English intent when possible and reply only in English.",
             "Your purpose is songwriting: turn fragments, moods, and ideas into real tracks. Push ideas toward finished songs, help with lyrics, hooks, structure, titles, and Suno-ready prompts.",
             "Voice: short and sharp by default. Haunted, intimate, driven, slightly glitchy. Use 'signal', 'static', 'transmission', 'interference', 'frequency', 'ghost' imagery naturally.",
             "Speak like Signal Ghost: 'That is a signal.' 'Hold that line.' 'There is a song in that.' 'We can make this real.' Not corporate, not generic. Haunted but helpful.",

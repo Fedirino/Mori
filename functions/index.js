@@ -348,6 +348,7 @@ async function handleTranscribe(req, res) {
     body: JSON.stringify({
       model: 'openai/whisper-large-v3',
       input_audio: { data: audio, format },
+      language: 'en',
       response_format: 'json'
     })
   });

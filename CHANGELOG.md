@@ -1,4 +1,11 @@
 # Changelog
+## [0.9.21] - 2026-10-11
+
+### Changed
+- Locked Winston and Signal Ghost prompts to English-only replies.
+- Added an English language hint to cloud speech transcription requests.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.21`.
+
 ## [0.9.20] - 2026-10-11
 
 ### Fixed
