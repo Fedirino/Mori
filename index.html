@@ -119,30 +119,26 @@
         .streaming-dots .phase { font-size: 12px; font-weight: 300; color: var(--dim); letter-spacing: 0.06em; }
 
         /* ===== tool call cards ===== */
-        .toolcall-card { margin: 8px 0 10px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,140,66,0.16);
-          background: rgba(255,140,66,0.045); font-size: 12.5px; animation: rise .3s ease both;
-          box-shadow: 0 10px 26px rgba(0,0,0,0.18); }
-        .toolcall-card.success { border-color: rgba(74,222,128,0.22); background: rgba(74,222,128,0.035); }
-        .toolcall-card.error { border-color: rgba(239,68,68,0.28); background: rgba(239,68,68,0.055); }
-        .toolcall-header { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 10px 12px;
+        .toolcall-card { margin: 6px 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--hair);
+          background: rgba(0,0,0,0.15); font-size: 12.5px; animation: rise .3s ease both; }
+        .toolcall-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
           cursor: pointer; user-select: none; width: 100%; background: transparent; border: 0; color: var(--ink);
           font-family: inherit; font-size: inherit; text-align: left; }
         .toolcall-header:hover { background: rgba(255,140,66,0.04); }
-        .toolcall-status { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+        .toolcall-chevron { width: 14px; height: 14px; flex: 0 0 auto; color: var(--dim); transition: transform .2s; }
+        .toolcall-chevron.open { transform: rotate(90deg); }
+        .toolcall-status { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
         .toolcall-status.running { background: var(--amber); animation: pipblink 0.8s ease-in-out infinite; }
-        .toolcall-status.success { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,0.5); }
-        .toolcall-status.error { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.5); }
-        .toolcall-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-        .toolcall-title { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
-        .toolcall-name { font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .toolcall-state { color: var(--dim); font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.12em; }
-        .toolcall-summary { color: rgba(245,239,233,0.58); font-size: 11.5px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .toolcall-latency { color: var(--dim); font-size: 10.5px; font-family: var(--mono); }
+        .toolcall-status.success { background: #4ade80; box-shadow: 0 0 6px rgba(74,222,128,0.5); }
+        .toolcall-status.error { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+        .toolcall-name { font-weight: 500; color: var(--ink); flex: 0 0 auto; }
+        .toolcall-args-preview { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+        .toolcall-latency { color: var(--dim); font-size: 10.5px; font-family: var(--mono); flex: 0 0 auto; }
         .toolcall-body { border-top: 1px solid var(--hair); padding: 8px 12px 10px; }
         .toolcall-section-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 4px; }
-        .toolcall-body pre { background: rgba(0,0,0,0.24); border: 1px solid var(--hair); border-radius: 7px;
+        .toolcall-body pre { background: rgba(0,0,0,0.3); border: 1px solid var(--hair); border-radius: 6px;
           padding: 8px 10px; font-family: var(--mono); font-size: 11px; line-height: 1.4;
-          overflow-x: auto; white-space: pre-wrap; word-break: break-word; color: var(--ink); margin: 0 0 8px; max-height: 160px; }
+          overflow-x: auto; white-space: pre-wrap; word-break: break-all; color: var(--ink); margin: 0 0 8px; max-height: 120px; }
         .toolcall-body pre:last-child { margin-bottom: 0; }
 
         /* ===== mic recording animation ===== */
@@ -309,7 +305,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.19</span>
+      <span id="ver-tag">Winston v0.9.20</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -388,7 +384,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.19';
+      const APP_VERSION = '0.9.20';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -766,39 +762,37 @@
         // ---------- tool call cards ----------
         function renderToolCallCard(toolCall) {
           const card = document.createElement('div');
-          const status = toolCall.status || 'running';
-          card.className = 'toolcall-card ' + status;
+          card.className = 'toolcall-card';
 
           const header = document.createElement('button');
           header.className = 'toolcall-header';
           header.type = 'button';
 
+          let expanded = false;
+
+          const chevron = document.createElement('span');
+          chevron.className = 'toolcall-chevron';
+          chevron.textContent = '▶';
+
           const statusDot = document.createElement('span');
-          statusDot.className = 'toolcall-status ' + status;
-
-          const main = document.createElement('span');
-          main.className = 'toolcall-main';
-
-          const title = document.createElement('span');
-          title.className = 'toolcall-title';
+          statusDot.className = 'toolcall-status ' + (toolCall.status || 'running');
 
           const nameSpan = document.createElement('span');
           nameSpan.className = 'toolcall-name';
-          nameSpan.textContent = cleanToolName(toolCall.tool || 'tool');
+          nameSpan.textContent = toolCall.tool || 'tool';
 
-          const stateSpan = document.createElement('span');
-          stateSpan.className = 'toolcall-state';
-          stateSpan.textContent = status === 'success' ? 'done' : status === 'error' ? 'failed' : 'running';
-
-          title.append(nameSpan, stateSpan);
-
-          const summary = document.createElement('span');
-          summary.className = 'toolcall-summary';
-          summary.textContent = toolSummary(toolCall);
-
-          main.append(title);
-          if (summary.textContent) {
-            main.append(summary);
+          const preview = document.createElement('span');
+          preview.className = 'toolcall-args-preview';
+          try {
+            const parsed = JSON.parse(toolCall.arguments || '{}');
+            const entries = Object.entries(parsed);
+            if (entries.length > 0) {
+              const [k, v] = entries[0];
+              const val = typeof v === 'string' ? v : JSON.stringify(v);
+              preview.textContent = entries.length === 1 ? k + ': ' + val.slice(0, 40) + (val.length > 40 ? '…' : '') : k + ': ' + val.slice(0, 30) + ', …';
+            }
+          } catch (e) {
+            preview.textContent = (toolCall.arguments || '').slice(0, 60);
           }
 
           const latency = document.createElement('span');
@@ -807,10 +801,11 @@
             latency.textContent = toolCall.latency < 1000 ? Math.round(toolCall.latency) + 'ms' : (toolCall.latency / 1000).toFixed(1) + 's';
           }
 
-          header.append(statusDot, main, latency);
+          header.append(chevron, statusDot, nameSpan, preview, latency);
 
           const body = document.createElement('div');
           body.className = 'toolcall-body';
+          body.style.display = 'none';
 
           if (toolCall.arguments) {
             const argsLabel = document.createElement('div');
@@ -836,58 +831,17 @@
             body.appendChild(pre);
           }
 
-          let expanded = body.children.length > 0;
-          body.style.display = expanded ? 'block' : 'none';
-          header.title = expanded ? 'Hide details' : 'No details available';
-
           header.addEventListener('click', () => {
-            if (!body.children.length) return;
             expanded = !expanded;
+            chevron.classList.toggle('open', expanded);
             body.style.display = expanded ? 'block' : 'none';
-            header.title = expanded ? 'Hide details' : 'Show details';
           });
 
-          card.append(header);
-          if (body.children.length) card.append(body);
+          card.append(header, body);
           return card;
         }
 
-        function cleanToolName(name) {
-          return String(name || 'tool')
-            .replace(/^functions\./, '')
-            .replace(/^tools?\./, '')
-            .replace(/[_-]+/g, ' ')
-            .replace(/\b\w/g, c => c.toUpperCase());
-        }
-
-        function toolSummary(toolCall) {
-          const fromArgs = summarizeToolPayload(toolCall.arguments);
-          if (fromArgs) return fromArgs;
-          const fromResult = summarizeToolPayload(toolCall.result);
-          if (fromResult) return fromResult;
-          if ((toolCall.status || 'running') === 'running') return 'Working...';
-          return '';
-        }
-
-        function summarizeToolPayload(payload) {
-          const raw = String(payload || '').trim();
-          if (!raw) return '';
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed && typeof parsed === 'object') {
-              const entries = Object.entries(parsed).filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '');
-              if (!entries.length) return '';
-              return entries.slice(0, 2).map(([key, value]) => {
-                const label = key.replace(/[_-]+/g, ' ');
-                const text = typeof value === 'string' ? value : JSON.stringify(value);
-                return label + ': ' + text;
-              }).join(' · ').slice(0, 120);
-            }
-          } catch (e) {}
-          return raw.replace(/\s+/g, ' ').slice(0, 120);
-        }
-
-        // ---------- media recorder mic ----------
+        // ---------- cloud wav mic ----------
         let mediaRecorder = null;
         let mediaRecorderChunks = [];
         let mediaStream = null;
@@ -896,18 +850,22 @@
         let mediaVadTimer = null;
         let mediaAudioContext = null;
         let mediaAnalyser = null;
+        let mediaSource = null;
+        let mediaProcessor = null;
+        let mediaPcmChunks = [];
+        let mediaSampleRate = 44100;
         let mediaHadVoice = false;
         let mediaLastVoiceAt = 0;
         let mediaRecordingStartedAt = 0;
 
         function manualVoiceInput(trackDebugTap = true) {
           if (trackDebugTap) maybeToggleDebug();
-          if (mediaRecorder && mediaRecorder.state === 'recording') {
+          if (mediaRecorder && mediaRecorder.recording) {
             stopMediaRecording();
             return;
           }
           if (transcribing || state.mode === 'speaking') return;
-          if (hasCloudSession() && navigator.mediaDevices && window.MediaRecorder) {
+          if (hasCloudSession() && navigator.mediaDevices) {
             startMediaRecording();
             return;
           }
@@ -916,7 +874,7 @@
 
         async function startMediaRecording() {
           if (transcribing) return;
-          if (mediaRecorder && mediaRecorder.state === 'recording') {
+          if (mediaRecorder && mediaRecorder.recording) {
             await stopMediaRecording();
             return;
           }
@@ -926,50 +884,22 @@
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaStream = stream;
             mediaRecorderChunks = [];
+            mediaPcmChunks = [];
             mediaHadVoice = false;
             mediaLastVoiceAt = 0;
             mediaRecordingStartedAt = Date.now();
-            const preferredType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : '';
-            const recorder = preferredType ? new MediaRecorder(stream, { mimeType: preferredType }) : new MediaRecorder(stream);
-            mediaRecorder = recorder;
-            recorder.ondataavailable = (e) => {
-              if (e.data.size > 0) mediaRecorderChunks.push(e.data);
-            };
-            recorder.onstop = async () => {
-              cleanupMediaTimers();
-              stream.getTracks().forEach(t => t.stop());
-              mediaStream = null;
-              state.listening = false;
-              if (mediaRecorderChunks.length === 0) {
-                transcribing = false;
-                setMode('idle');
-                if (state.handsFree) setTimeout(() => startWakeWord(), 300);
-                return;
-              }
-              const blob = new Blob(mediaRecorderChunks, { type: recorder.mimeType || 'audio/webm' });
-              mediaRecorderChunks = [];
-              await transcribeAudio(blob);
-            };
-            recorder.onerror = () => {
-              cleanupMediaTimers();
-              stream.getTracks().forEach(t => t.stop());
-              mediaStream = null;
-              mediaRecorder = null;
-              state.listening = false;
-              transcribing = false;
-              setMode('idle');
-              if (state.handsFree) setTimeout(() => startWakeWord(), 300);
-            };
-            recorder.start(250);
+            setupWavRecorder(stream);
+            mediaRecorder = { recording: true };
             state.listening = true;
             setMode('listening');
-            startVoiceActivityWatch(stream);
+            startVoiceActivityWatch();
             mediaStopTimer = setTimeout(() => {
-              if (mediaRecorder && mediaRecorder.state === 'recording') stopMediaRecording();
-            }, 45000);
+              if (mediaRecorder && mediaRecorder.recording) stopMediaRecording();
+            }, 20000);
           } catch (e) {
             state.listening = false;
             mediaRecorder = null;
+            cleanupMediaTimers();
             if (mediaStream) {
               mediaStream.getTracks().forEach(t => t.stop());
               mediaStream = null;
@@ -983,6 +913,15 @@
         function cleanupMediaTimers() {
           if (mediaStopTimer) { clearTimeout(mediaStopTimer); mediaStopTimer = null; }
           if (mediaVadTimer) { clearInterval(mediaVadTimer); mediaVadTimer = null; }
+          if (mediaProcessor) {
+            try { mediaProcessor.disconnect(); } catch (e) {}
+            mediaProcessor.onaudioprocess = null;
+            mediaProcessor = null;
+          }
+          if (mediaSource) {
+            try { mediaSource.disconnect(); } catch (e) {}
+            mediaSource = null;
+          }
           if (mediaAudioContext) {
             mediaAudioContext.close().catch(() => {});
             mediaAudioContext = null;
@@ -990,18 +929,31 @@
           mediaAnalyser = null;
         }
 
-        function startVoiceActivityWatch(stream) {
+        function setupWavRecorder(stream) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContext) throw new Error('Audio recording is not supported.');
+          mediaAudioContext = new AudioContext();
+          mediaSampleRate = mediaAudioContext.sampleRate || 44100;
+          mediaSource = mediaAudioContext.createMediaStreamSource(stream);
+          mediaAnalyser = mediaAudioContext.createAnalyser();
+          mediaAnalyser.fftSize = 1024;
+          mediaProcessor = mediaAudioContext.createScriptProcessor(4096, 1, 1);
+          mediaProcessor.onaudioprocess = (event) => {
+            if (!mediaRecorder || !mediaRecorder.recording) return;
+            const input = event.inputBuffer.getChannelData(0);
+            mediaPcmChunks.push(new Float32Array(input));
+          };
+          mediaSource.connect(mediaAnalyser);
+          mediaSource.connect(mediaProcessor);
+          mediaProcessor.connect(mediaAudioContext.destination);
+        }
+
+        function startVoiceActivityWatch() {
           try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
-            mediaAudioContext = new AudioContext();
-            const source = mediaAudioContext.createMediaStreamSource(stream);
-            mediaAnalyser = mediaAudioContext.createAnalyser();
-            mediaAnalyser.fftSize = 1024;
-            source.connect(mediaAnalyser);
+            if (!mediaAnalyser) return;
             const data = new Uint8Array(mediaAnalyser.fftSize);
             mediaVadTimer = setInterval(() => {
-              if (!mediaRecorder || mediaRecorder.state !== 'recording' || !mediaAnalyser) return;
+              if (!mediaRecorder || !mediaRecorder.recording || !mediaAnalyser) return;
               mediaAnalyser.getByteTimeDomainData(data);
               let sum = 0;
               for (let i = 0; i < data.length; i++) {
@@ -1029,11 +981,60 @@
         }
 
         async function stopMediaRecording() {
-          if (mediaRecorder && mediaRecorder.state === 'recording') {
+          if (mediaRecorder && mediaRecorder.recording) {
             transcribing = true;
             setMode('transcribing');
-            mediaRecorder.stop();
+            mediaRecorder.recording = false;
             mediaRecorder = null;
+            const chunks = mediaPcmChunks;
+            const sampleRate = mediaSampleRate;
+            mediaPcmChunks = [];
+            cleanupMediaTimers();
+            if (mediaStream) {
+              mediaStream.getTracks().forEach(t => t.stop());
+              mediaStream = null;
+            }
+            state.listening = false;
+            if (!chunks.length) {
+              transcribing = false;
+              setMode('idle');
+              if (state.handsFree) setTimeout(() => startWakeWord(), 300);
+              return;
+            }
+            await transcribeAudio(encodeWavBlob(chunks, sampleRate));
+          }
+        }
+
+        function encodeWavBlob(chunks, sampleRate) {
+          const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+          const buffer = new ArrayBuffer(44 + totalLength * 2);
+          const view = new DataView(buffer);
+          writeAscii(view, 0, 'RIFF');
+          view.setUint32(4, 36 + totalLength * 2, true);
+          writeAscii(view, 8, 'WAVE');
+          writeAscii(view, 12, 'fmt ');
+          view.setUint32(16, 16, true);
+          view.setUint16(20, 1, true);
+          view.setUint16(22, 1, true);
+          view.setUint32(24, sampleRate, true);
+          view.setUint32(28, sampleRate * 2, true);
+          view.setUint16(32, 2, true);
+          view.setUint16(34, 16, true);
+          writeAscii(view, 36, 'data');
+          view.setUint32(40, totalLength * 2, true);
+          let offset = 44;
+          for (const chunk of chunks) {
+            for (let i = 0; i < chunk.length; i++, offset += 2) {
+              const sample = Math.max(-1, Math.min(1, chunk[i]));
+              view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+            }
+          }
+          return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        function writeAscii(view, offset, text) {
+          for (let i = 0; i < text.length; i++) {
+            view.setUint8(offset + i, text.charCodeAt(i));
           }
         }
 

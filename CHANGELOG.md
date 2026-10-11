@@ -1,10 +1,12 @@
 # Changelog
-## [0.9.19] - 2026-10-11
+## [0.9.20] - 2026-10-11
 
-### Changed
-- Restyled Hermes tool calls as readable activity rows with visible tool names, status, latency, and compact summaries instead of tiny collapsed clipboard buttons or empty bars.
-- Tool call details now show only when arguments/results exist and open by default, while empty detail shells are omitted.
-- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.19`.
+### Fixed
+- Replaced browser `MediaRecorder` WebM uploads with a small in-browser WAV encoder for cloud tap-to-talk, matching OpenRouter's safest transcription format.
+- Kept voice-activity auto-stop while sending `audio/wav` to the transcription endpoint.
+- Capped cloud voice recordings at 20 seconds so WAV uploads stay comfortably under the backend request limit.
+- Rolled back the experimental `0.9.19` tool-card restyle after it made the UI noisier.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.20`.
 
 ## [0.9.18] - 2026-10-11
 
