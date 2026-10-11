@@ -1,4 +1,11 @@
 # Changelog
+## [0.9.17] - 2026-10-11
+
+### Fixed
+- Raised the `/api/transcribe` request-size gate so recorded audio reaches the transcription handler instead of being rejected by the generic chat/TTS payload limit.
+- Normalized recorder MIME types before building the transcription data URI.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.17`.
+
 ## [0.9.16] - 2026-10-11
 
 ### Fixed

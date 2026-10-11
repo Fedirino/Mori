@@ -335,7 +335,7 @@ async function handleSpeech(req, res) {
 
 async function handleTranscribe(req, res) {
   const audio = String((req.body && req.body.audio) || '').trim();
-  const mime = String((req.body && req.body.mime) || 'audio/webm').trim();
+  const mime = String((req.body && req.body.mime) || 'audio/webm').trim().split(';')[0] || 'audio/webm';
   if (!audio || audio.length > 5_000_000) return json(res, 400, { error: 'Invalid audio.' });
 
   const upstream = await fetch('https://openrouter.ai/api/v1/audio/transcriptions', {
@@ -380,7 +380,8 @@ exports.api = onRequest({
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
   const contentLength = Number(req.get('content-length') || 0);
   const parsedLength = req.body ? JSON.stringify(req.body).length : 0;
-  if (contentLength > 100_000 || parsedLength > 100_000) {
+  const requestLimit = path.endsWith('/transcribe') ? 5_300_000 : 100_000;
+  if (contentLength > requestLimit || parsedLength > requestLimit) {
     return json(res, 413, { error: 'Request is too large.' });
   }
 
