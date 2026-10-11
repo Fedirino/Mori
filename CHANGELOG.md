@@ -1,4 +1,11 @@
 # Changelog
+## [0.9.16] - 2026-10-11
+
+### Fixed
+- Added voice-activity detection to the cloud tap-to-talk recorder. Winston now auto-stops and transcribes after speech followed by silence, or after a short no-speech timeout, instead of appearing to listen indefinitely.
+- Updated the listening hint to make the cloud mic flow clearer.
+- Bumped frontend version, manifest start URL, and service-worker cache key to `0.9.16`.
+
 ## [0.9.15] - 2026-10-11
 
 ### Fixed

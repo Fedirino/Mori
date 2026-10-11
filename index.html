@@ -305,7 +305,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.15</span>
+      <span id="ver-tag">Winston v0.9.16</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -384,7 +384,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.15';
+      const APP_VERSION = '0.9.16';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -503,7 +503,7 @@
         };
         const WHISP = {
           idle: 'tap to speak',
-          listening: 'listening — tap to stop',
+          listening: 'listening — speak now',
           transcribing: 'transcribing…',
           thinking: 'one moment',
           speaking: 'one moment'
@@ -847,6 +847,12 @@
         let mediaStream = null;
         let transcribing = false;
         let mediaStopTimer = null;
+        let mediaVadTimer = null;
+        let mediaAudioContext = null;
+        let mediaAnalyser = null;
+        let mediaHadVoice = false;
+        let mediaLastVoiceAt = 0;
+        let mediaRecordingStartedAt = 0;
 
         function manualVoiceInput(trackDebugTap = true) {
           if (trackDebugTap) maybeToggleDebug();
@@ -874,6 +880,9 @@
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaStream = stream;
             mediaRecorderChunks = [];
+            mediaHadVoice = false;
+            mediaLastVoiceAt = 0;
+            mediaRecordingStartedAt = Date.now();
             const preferredType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : '';
             const recorder = preferredType ? new MediaRecorder(stream, { mimeType: preferredType }) : new MediaRecorder(stream);
             mediaRecorder = recorder;
@@ -881,7 +890,7 @@
               if (e.data.size > 0) mediaRecorderChunks.push(e.data);
             };
             recorder.onstop = async () => {
-              if (mediaStopTimer) { clearTimeout(mediaStopTimer); mediaStopTimer = null; }
+              cleanupMediaTimers();
               stream.getTracks().forEach(t => t.stop());
               mediaStream = null;
               state.listening = false;
@@ -896,7 +905,7 @@
               await transcribeAudio(blob);
             };
             recorder.onerror = () => {
-              if (mediaStopTimer) { clearTimeout(mediaStopTimer); mediaStopTimer = null; }
+              cleanupMediaTimers();
               stream.getTracks().forEach(t => t.stop());
               mediaStream = null;
               mediaRecorder = null;
@@ -905,9 +914,10 @@
               setMode('idle');
               if (state.handsFree) setTimeout(() => startWakeWord(), 300);
             };
-            recorder.start();
+            recorder.start(250);
             state.listening = true;
             setMode('listening');
+            startVoiceActivityWatch(stream);
             mediaStopTimer = setTimeout(() => {
               if (mediaRecorder && mediaRecorder.state === 'recording') stopMediaRecording();
             }, 45000);
@@ -921,6 +931,54 @@
             showToast('Microphone access denied. Check browser permissions.');
             setMode('idle');
             if (state.handsFree) setTimeout(() => startWakeWord(), 850);
+          }
+        }
+
+        function cleanupMediaTimers() {
+          if (mediaStopTimer) { clearTimeout(mediaStopTimer); mediaStopTimer = null; }
+          if (mediaVadTimer) { clearInterval(mediaVadTimer); mediaVadTimer = null; }
+          if (mediaAudioContext) {
+            mediaAudioContext.close().catch(() => {});
+            mediaAudioContext = null;
+          }
+          mediaAnalyser = null;
+        }
+
+        function startVoiceActivityWatch(stream) {
+          try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            mediaAudioContext = new AudioContext();
+            const source = mediaAudioContext.createMediaStreamSource(stream);
+            mediaAnalyser = mediaAudioContext.createAnalyser();
+            mediaAnalyser.fftSize = 1024;
+            source.connect(mediaAnalyser);
+            const data = new Uint8Array(mediaAnalyser.fftSize);
+            mediaVadTimer = setInterval(() => {
+              if (!mediaRecorder || mediaRecorder.state !== 'recording' || !mediaAnalyser) return;
+              mediaAnalyser.getByteTimeDomainData(data);
+              let sum = 0;
+              for (let i = 0; i < data.length; i++) {
+                const centered = data[i] - 128;
+                sum += centered * centered;
+              }
+              const rms = Math.sqrt(sum / data.length);
+              const now = Date.now();
+              if (rms > 7) {
+                mediaHadVoice = true;
+                mediaLastVoiceAt = now;
+              }
+              if (!mediaHadVoice && now - mediaRecordingStartedAt > 8000) {
+                stopMediaRecording();
+                return;
+              }
+              if (mediaHadVoice && now - mediaRecordingStartedAt > 900 && now - mediaLastVoiceAt > 1200) {
+                stopMediaRecording();
+              }
+            }, 120);
+          } catch (e) {
+            // If audio analysis is unavailable, manual tap-to-stop and the
+            // hard timeout still keep the recorder usable.
           }
         }
 
