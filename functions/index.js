@@ -92,6 +92,7 @@ async function handleChat(req, res, sessionKey) {
     const createResp = await fetch(hermesUrl + '/v1/runs', {
       method: 'POST',
       headers: runHeaders,
+      signal: AbortSignal.timeout(15_000),
       body: JSON.stringify({
         model: DEFAULT_HERMES_MODEL,
         input: input.slice(0, 60_000),
@@ -110,7 +111,7 @@ async function handleChat(req, res, sessionKey) {
   if (!runId) return json(res, 502, { error: 'Hermes relay did not return a run ID.' });
 
   // Step 2: Poll events until completed or timeout
-  const deadline = Date.now() + 110_000;
+  const deadline = Date.now() + 35_000;
   let fullOutput = '';
   const toolCalls = [];
   const toolById = new Map();
@@ -121,6 +122,7 @@ async function handleChat(req, res, sessionKey) {
     await new Promise(r => setTimeout(r, 600));
     try {
       const eventsResp = await fetch(hermesUrl + '/v1/runs/' + runId + '/events', {
+              signal: AbortSignal.timeout(Math.min(8_000, Math.max(1, deadline - Date.now()))),
               headers: sessionKey
                 ? { Authorization: 'Bearer ' + hermesKey, 'X-Hermes-Session-Key': sessionKey }
                 : { Authorization: 'Bearer ' + hermesKey }
@@ -129,15 +131,16 @@ async function handleChat(req, res, sessionKey) {
         // 404 means the event log is gone — fetch the run status directly
         if (eventsResp.status === 404) {
           const statusResp = await fetch(hermesUrl + '/v1/runs/' + runId, {
-            headers: { Authorization: 'Bearer ' + hermesKey }
+            signal: AbortSignal.timeout(Math.min(8_000, Math.max(1, deadline - Date.now()))),
+            headers: runHeaders
           });
           if (statusResp.ok) {
             const status = await statusResp.json();
             fullOutput = status.output || fullOutput;
+            done = status.status === 'completed';
           }
-          done = true;
         }
-        break;
+        continue;
       }
       const raw = await eventsResp.text();
       const eventLines = raw.split('\n').filter(line => line.startsWith('data: '));
@@ -191,8 +194,13 @@ async function handleChat(req, res, sessionKey) {
       }
     } catch (e) {
       console.error('Hermes events poll error', e.message);
-      break;
+      continue;
     }
+  }
+
+  if (!done) {
+    const pendingReply = 'I have not received confirmation from Hermes yet. The action may already have gone through, or may still be running.';
+    return json(res, 200, { pending: true, reply: pendingReply, speech_reply: pendingReply });
   }
 
   let trimmed = fullOutput || '';

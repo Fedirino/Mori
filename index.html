@@ -118,28 +118,6 @@
         @keyframes dotbounce { 0%,60%,100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-8px); opacity: 1; } }
         .streaming-dots .phase { font-size: 12px; font-weight: 300; color: var(--dim); letter-spacing: 0.06em; }
 
-        /* ===== tool call cards ===== */
-        .toolcall-card { margin: 6px 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--hair);
-          background: rgba(0,0,0,0.15); font-size: 12.5px; animation: rise .3s ease both; }
-        .toolcall-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-          cursor: pointer; user-select: none; width: 100%; background: transparent; border: 0; color: var(--ink);
-          font-family: inherit; font-size: inherit; text-align: left; }
-        .toolcall-header:hover { background: rgba(255,140,66,0.04); }
-        .toolcall-chevron { width: 14px; height: 14px; flex: 0 0 auto; color: var(--dim); transition: transform .2s; }
-        .toolcall-chevron.open { transform: rotate(90deg); }
-        .toolcall-status { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
-        .toolcall-status.running { background: var(--amber); animation: pipblink 0.8s ease-in-out infinite; }
-        .toolcall-status.success { background: #4ade80; box-shadow: 0 0 6px rgba(74,222,128,0.5); }
-        .toolcall-status.error { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.5); }
-        .toolcall-name { font-weight: 500; color: var(--ink); flex: 0 0 auto; }
-        .toolcall-args-preview { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
-        .toolcall-latency { color: var(--dim); font-size: 10.5px; font-family: var(--mono); flex: 0 0 auto; }
-        .toolcall-body { border-top: 1px solid var(--hair); padding: 8px 12px 10px; }
-        .toolcall-section-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 4px; }
-        .toolcall-body pre { background: rgba(0,0,0,0.3); border: 1px solid var(--hair); border-radius: 6px;
-          padding: 8px 10px; font-family: var(--mono); font-size: 11px; line-height: 1.4;
-          overflow-x: auto; white-space: pre-wrap; word-break: break-all; color: var(--ink); margin: 0 0 8px; max-height: 120px; }
-        .toolcall-body pre:last-child { margin-bottom: 0; }
 
         /* ===== mic recording animation ===== */
         [data-state="recording"] .mic { background: rgba(255,140,66,0.2); border-color: var(--amber); box-shadow: 0 0 30px rgba(255,140,66,0.2); }
@@ -305,7 +283,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.21</span>
+      <span id="ver-tag">Winston v0.9.22</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -384,7 +362,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.21';
+      const APP_VERSION = '0.9.22';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -686,22 +664,20 @@
               try {
                 const data = await sendToCloud();
                 const raw = data.reply || '';
-                const toolCalls = data.tool_calls || [];
                 const { text: reply, action } = parseAction(raw);
-                                state.messages.push({ role: 'assistant', content: raw });
-                                // Render tool call cards before the reply
-                                for (const tc of toolCalls) {
-                                  els.transcript.appendChild(renderToolCallCard(tc));
-                                }
+                                if (!data.pending) state.messages.push({ role: 'assistant', content: raw });
                                 addLine('kyo', reply || raw, true);
                                 if (state.persona !== 'signal-ghost') speak(stripForTTS(data.speech_reply || reply || raw));
                                                                 else setMode('idle');
                                 if (action) runAction(action);
               } catch (e) {
                 setMode('idle');
-                const msg = (e && e.message) ? e.message : 'Something went wrong.';
-                addLine('kyo', 'Error: ' + msg);
-                speak('Something went wrong.');
+                const uncertain = e instanceof TypeError || [500, 502, 503, 504].includes(e && e.status);
+                const msg = uncertain
+                  ? 'I lost contact with the relay before receiving confirmation. Your action may still have gone through.'
+                  : 'Error: ' + ((e && e.message) ? e.message : 'Something went wrong.');
+                addLine('kyo', msg);
+                speak(uncertain ? msg : 'Something went wrong.');
               }
             }
 
@@ -761,87 +737,6 @@
           return d.innerHTML;
         }
 
-        // ---------- tool call cards ----------
-        function renderToolCallCard(toolCall) {
-          const card = document.createElement('div');
-          card.className = 'toolcall-card';
-
-          const header = document.createElement('button');
-          header.className = 'toolcall-header';
-          header.type = 'button';
-
-          let expanded = false;
-
-          const chevron = document.createElement('span');
-          chevron.className = 'toolcall-chevron';
-          chevron.textContent = '▶';
-
-          const statusDot = document.createElement('span');
-          statusDot.className = 'toolcall-status ' + (toolCall.status || 'running');
-
-          const nameSpan = document.createElement('span');
-          nameSpan.className = 'toolcall-name';
-          nameSpan.textContent = toolCall.tool || 'tool';
-
-          const preview = document.createElement('span');
-          preview.className = 'toolcall-args-preview';
-          try {
-            const parsed = JSON.parse(toolCall.arguments || '{}');
-            const entries = Object.entries(parsed);
-            if (entries.length > 0) {
-              const [k, v] = entries[0];
-              const val = typeof v === 'string' ? v : JSON.stringify(v);
-              preview.textContent = entries.length === 1 ? k + ': ' + val.slice(0, 40) + (val.length > 40 ? '…' : '') : k + ': ' + val.slice(0, 30) + ', …';
-            }
-          } catch (e) {
-            preview.textContent = (toolCall.arguments || '').slice(0, 60);
-          }
-
-          const latency = document.createElement('span');
-          latency.className = 'toolcall-latency';
-          if (toolCall.latency != null) {
-            latency.textContent = toolCall.latency < 1000 ? Math.round(toolCall.latency) + 'ms' : (toolCall.latency / 1000).toFixed(1) + 's';
-          }
-
-          header.append(chevron, statusDot, nameSpan, preview, latency);
-
-          const body = document.createElement('div');
-          body.className = 'toolcall-body';
-          body.style.display = 'none';
-
-          if (toolCall.arguments) {
-            const argsLabel = document.createElement('div');
-            argsLabel.className = 'toolcall-section-label';
-            argsLabel.textContent = 'arguments';
-            body.appendChild(argsLabel);
-            const pre = document.createElement('pre');
-            try {
-              pre.textContent = JSON.stringify(JSON.parse(toolCall.arguments), null, 2);
-            } catch (e) {
-              pre.textContent = toolCall.arguments;
-            }
-            body.appendChild(pre);
-          }
-
-          if (toolCall.result) {
-            const resultLabel = document.createElement('div');
-            resultLabel.className = 'toolcall-section-label';
-            resultLabel.textContent = 'result';
-            body.appendChild(resultLabel);
-            const pre = document.createElement('pre');
-            pre.textContent = toolCall.result.length > 500 ? toolCall.result.slice(0, 500) + '…' : toolCall.result;
-            body.appendChild(pre);
-          }
-
-          header.addEventListener('click', () => {
-            expanded = !expanded;
-            chevron.classList.toggle('open', expanded);
-            body.style.display = expanded ? 'block' : 'none';
-          });
-
-          card.append(header, body);
-          return card;
-        }
 
         // ---------- cloud wav mic ----------
         let mediaRecorder = null;

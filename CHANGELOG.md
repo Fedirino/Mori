@@ -1,4 +1,13 @@
 # Changelog
+## [0.9.22] - 2026-10-12
+
+### Changed
+- Removed tool-call displays from the conversation; Hermes still executes tools.
+- Bounded relay network waits and return an unconfirmed-action message when completion has not arrived.
+- Retry event polling after temporary failures without resubmitting the action.
+- Explain that actions may still have gone through when the app loses relay contact.
+- Bumped app version, manifest start URL, and service-worker cache to `0.9.22`.
+
 ## [0.9.21] - 2026-10-11
 
 ### Changed
