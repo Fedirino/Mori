@@ -1,4 +1,10 @@
 # Changelog
+## [0.9.23] - 2026-10-12
+
+### Changed
+- Removed the copy button from Winston's replies for a simpler conversation.
+- Bumped app version, manifest start URL, and service-worker cache to `0.9.23`.
+
 ## [0.9.22] - 2026-10-12
 
 ### Changed
