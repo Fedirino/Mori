@@ -667,24 +667,44 @@
 
     function stripForTTS(text) {
               return text
-                // Expand abbreviations before cleaning
-                .replace(/\bmph\b/gi, 'miles per hour')
-                .replace(/\bkm\/?h\b/gi, 'kilometers per hour')
-                .replace(/\bft\b/gi, 'feet')
-                .replace(/\bin\b/gi, 'inches')
-                .replace(/\bkm\b/gi, 'kilometers')
-                .replace(/\bcm\b/gi, 'centimeters')
-                .replace(/\bmm\b/gi, 'millimeters')
-                .replace(/\bvs\.?\b/gi, 'versus')
-                .replace(/\bhrs?\b/gi, 'hours')
-                .replace(/\bmins?\b/gi, 'minutes')
-                .replace(/\bsecs?\b/gi, 'seconds')
-                .replace(/\bdept\b/gi, 'department')
-                .replace(/\bappt\b/gi, 'appointment')
-                .replace(/\binfo\b/gi, 'information')
-                .replace(/\betc\b\.?/gi, 'et cetera')
-                .replace(/\bapprox\b/gi, 'approximately')
-                .replace(/%/g, 'percent')
+                // Expand abbreviations & symbols before cleaning.
+                                // Measurement units are number-guarded: they only expand when they follow a
+                                // number, so tokens that double as ordinary words ("in", "ft") are never mangled.
+                                .replace(/(\d+(?:\.\d+)?)\s*['′]\s*(\d+(?:\/\d+)?)\s*["″]/g, '$1 feet $2 inches') // 5'10" → five feet ten inches
+                                .replace(/(\d+(?:\.\d+)?)\s*["″]/g, '$1 inches')                                  // 6" → six inches
+                                .replace(/(\d+(?:\.\d+)?)\s*['′]/g, '$1 feet')                                    // 6' → six feet
+                                .replace(/(\d+(?:\.\d+)?)\s*(?:°|º)\s*[Ff]/g, '$1 degrees Fahrenheit')            // 68°F
+                                .replace(/(\d+(?:\.\d+)?)\s*(?:°|º)\s*[Cc]/g, '$1 degrees Celsius')               // 20°C
+                                .replace(/(\d+(?:\.\d+)?)\s*(?:°|º)/g, '$1 degrees')                              // 25° → twenty-five degrees
+                                .replace(/\bkm\/h\b/gi, 'kilometers per hour')
+                                .replace(/\bmph\b/gi, 'miles per hour')
+                                .replace(/(\d+(?:\.\d+)?)\s*in\.?\b/gi, '$1 inches')
+                                .replace(/(\d+(?:\.\d+)?)\s*ft\.?\b/gi, '$1 feet')
+                                .replace(/(\d+(?:\.\d+)?)\s*km\.?\b/gi, '$1 kilometers')
+                                .replace(/(\d+(?:\.\d+)?)\s*cm\.?\b/gi, '$1 centimeters')
+                                .replace(/(\d+(?:\.\d+)?)\s*mm\.?\b/gi, '$1 millimeters')
+                                .replace(/\bvs\.?\b/gi, 'versus')
+                                .replace(/\bhrs?\b/gi, 'hours')
+                                .replace(/\bmins?\b/gi, 'minutes')
+                                .replace(/\bsecs?\b/gi, 'seconds')
+                                .replace(/\bdept\b/gi, 'department')
+                                .replace(/\bappt\b/gi, 'appointment')
+                                .replace(/\binfo\b/gi, 'information')
+                                .replace(/\betc\.?\b/gi, 'et cetera')
+                                .replace(/\bapprox\b/gi, 'approximately')
+                                .replace(/(\d+(?:\.\d+)?)\s*%/g, '$1 percent')  // 100% → 100 percent (space)
+                                .replace(/%/g, ' percent')                       // any stray one
+                                // infrequent math/currency symbols ElevenLabs can garble
+                                .replace(/(\d+)\s*[×x]\s*(\d+)/g, '$1 by $2')     // 3×4 → 3 by 4
+                                .replace(/(\d+)²/g, '$1 squared')
+                                .replace(/(\d+)³/g, '$1 cubed')
+                                .replace(/≈/g, 'approximately')
+                                .replace(/≥/g, 'at least')
+                                .replace(/≤/g, 'at most')
+                                .replace(/≠/g, 'does not equal')
+                                .replace(/\$(\d+(?:\.\d+)?)/g, '$1 dollars')
+                                .replace(/€(\d+(?:\.\d+)?)/g, '$1 euros')
+                                .replace(/£(\d+(?:\.\d+)?)/g, '$1 pounds')
                 // Strip markdown formatting
                 .replace(/\*\*([^*]+)\*\*/g, '$1')
                 .replace(/\*([^*]+)\*/g, '$1')
