@@ -216,14 +216,10 @@
     .toast .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber);
       box-shadow: 0 0 10px rgba(255,140,66,0.9); animation: pipblink 0.8s ease-in-out infinite; flex: 0 0 auto; }
 
-    /* ===== view tabs ===== */
-    .tabbar { display: flex; gap: 6px; flex: 0 0 auto; padding-top: 8px; }
-    .tabbtn { flex: 1; padding: 9px 0; border-radius: 10px; border: 1px solid var(--hair);
-      background: rgba(255,255,255,0.02); color: var(--dim); font-family: var(--display);
-      font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer;
-      transition: color .2s, border-color .2s, background .2s; }
-    .tabbtn.active { color: var(--amber); border-color: rgba(255,140,66,0.45); background: rgba(255,140,66,0.08); }
-    .tabbtn:active { transform: scale(0.98); }
+    /* ===== home view ===== */
+    .topline .homebtn { grid-column: 1; justify-self: start; }
+    .homebtn svg { width: 20px; height: 20px; }
+    .homebtn.active { color: var(--amber); filter: drop-shadow(0 0 8px rgba(255,140,66,0.6)); }
 
     /* ===== home control view ===== */
     #home-panel { flex: 1; min-height: 0; display: none; flex-direction: column; gap: 8px; overflow: hidden; }
@@ -269,6 +265,17 @@
     .ha-run:disabled { opacity: 0.5; cursor: default; transform: none; }
     .ha-empty { padding: 26px 18px; text-align: center; color: var(--dim); font-size: 12.5px; line-height: 1.5; }
     .ha-busy { color: var(--amber); animation: pipblink .8s ease-in-out infinite; }
+    .ha-alloff { width: 100%; padding: 13px; border-radius: 12px; border: 1px solid rgba(224,92,26,0.45);
+      background: rgba(224,92,26,0.12); color: var(--amber-hot); font-family: var(--display);
+      font-size: 12.5px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; cursor: pointer; }
+    .ha-alloff:active { transform: scale(0.98); }
+    .ha-alloff:disabled { opacity: 0.5; cursor: default; transform: none; }
+    .ha-themes { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ha-theme { padding: 10px 16px; border-radius: 999px; border: 1px solid var(--hair);
+      background: rgba(255,255,255,0.03); color: var(--ink); font-family: var(--display);
+      font-size: 12px; letter-spacing: 0.04em; cursor: pointer; transition: color .2s, border-color .2s, background .2s; }
+    .ha-theme.active, .ha-theme:active { color: var(--amber-hot); border-color: rgba(255,140,66,0.5); background: rgba(255,140,66,0.1); }
+    .ha-theme:disabled { opacity: 0.5; cursor: default; transform: none; }
 
     /* ===== desktop / large-viewport scale-up ===== */
     @media (min-width: 820px) and (min-height: 640px) {
@@ -294,6 +301,11 @@
 <body data-state="idle">
   <main class="app">
     <div class="topline">
+      <button class="iconbtn homebtn" id="tab-home" title="Home" aria-label="Home — Home Assistant control">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M3 11.5L12 4l9 7.5M5.5 10v9h13v-9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
       <button class="brand" id="brand" aria-label="Winston — open settings">
         <span class="base">Winston</span>
         <span class="gs gs1" aria-hidden="true">Winston</span>
@@ -333,11 +345,6 @@
           <div class="home-scroll" id="home-list"></div>
         </section>
 
-        <nav class="tabbar" aria-label="Views">
-          <button class="tabbtn active" data-view="chat" id="tab-chat">Winston</button>
-          <button class="tabbtn" data-view="home" id="tab-home">Home</button>
-        </nav>
-
         <form class="composer" id="composer">
       <input id="chat-input" type="text" placeholder="type or tap the mic…" autocomplete="off" />
       <button type="submit">SEND</button>
@@ -357,7 +364,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.23</span>
+      <span id="ver-tag">Winston v0.9.25</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -436,7 +443,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.24';
+      const APP_VERSION = '0.9.25';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -550,9 +557,8 @@
                                         homeState: document.getElementById('home-state'),
                                         homeList: document.getElementById('home-list'),
                                         homeRefresh: document.getElementById('home-refresh'),
-                                        tabChat: document.getElementById('tab-chat'),
-                                        tabHome: document.getElementById('tab-home')
-                                      };
+                                                            tabHome: document.getElementById('tab-home')
+                                                      };
 
     // ---------- ui ----------
     const LABEL = {
@@ -714,15 +720,16 @@
     // (mixed-content / CORS), so Hermes is the bridge. No HA token in the client.
     const HOME_SYS =
           "You control the Home Assistant dashboard. The user is Fedirino. Respond in English. " +
-      'For a snapshot request, list every controllable device (lights, switches, media players) ' +
-      'with its entity_id, friendly name, domain, and current on/off state. ' +
-      'For a control request, call the matching Home Assistant service to toggle the device, ' +
-      'then confirm in one short line. Do not invent devices. Use your Home Assistant tools. ' +
+      'Control LIGHTS and THEME/SCRIPT modes only. ' +
+      'For a snapshot request, list every light with its entity_id, friendly name, and on/off state, ' +
+      'and list the theme scripts (Halloween, Thanksgiving, Christmas, Party, Candle, Night, Morning, ' +
+      'Haunted, Rainbow modes) by entity_id and friendly name. ' +
+      'For a control request, call the matching Home Assistant service to turn a light on/off or run ' +
+      'a script, then confirm in one short line. Do not invent devices. Use your Home Assistant tools. ' +
       'Reply concisely.';
 
     function applyView() {
       document.body.dataset.view = state.view;
-      if (els.tabChat) els.tabChat.classList.toggle('active', state.view === 'chat');
       if (els.tabHome) els.tabHome.classList.toggle('active', state.view === 'home');
       // Pause wake word / mic while on Home view so neither competes.
       if (state.view === 'home') stopWakeWord();
@@ -764,14 +771,16 @@
       try {
         const data = await homeChat([{
           role: 'user',
-          content: 'Snapshot: list every controllable device in Home Assistant. Return a JSON array only, ' +
-            'each entry as {"id":"entity_id","name":"friendly name","domain":"light|switch|media_player","on":true|false}. ' +
+          content: 'Snapshot: list every light in Home Assistant and every theme script ' +
+            '(Halloween, Thanksgiving, Christmas, Party, Candle, Night, Morning, Haunted, Rainbow modes). ' +
+            'Return ONLY a JSON object: {"lights":[{"id":"entity_id","name":"friendly name","on":true|false},...],' +
+            '"scripts":[{"id":"entity_id","name":"friendly name"},...]}. Include every light and every theme script. ' +
             'No prose, no markdown fences.'
         }]);
-        const items = parseHomeSnapshot(data.reply || '');
-        if (!items.length) throw new Error('No devices returned.');
-        renderHome(items);
-        els.homeState.textContent = items.length + ' devices';
+        const snapshot = parseHomeSnapshot(data.reply || '');
+        if (!snapshot.lights.length) throw new Error('No lights returned.');
+        renderHome(snapshot);
+        els.homeState.textContent = snapshot.lights.length + ' lights';
       } catch (e) {
         els.homeState.textContent = 'unavailable';
         els.homeList.innerHTML = '<div class="ha-empty">Could not reach the house — ' +
@@ -784,65 +793,156 @@
       let raw = String(text || '').trim();
       // Strip markdown fences if the model wrapped the JSON.
       raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-      const start = raw.indexOf('[');
-      const end = raw.lastIndexOf(']');
-      if (start === -1 || end === -1 || end <= start) throw new Error('No readable device list returned.');
-      const arr = JSON.parse(raw.slice(start, end + 1));
-      if (!Array.isArray(arr)) throw new Error('Bad snapshot shape.');
-      return arr
-        .filter(it => it && it.id && it.name)
-        .map(it => ({ id: String(it.id), name: String(it.name), domain: String(it.domain || 'switch'), on: !!it.on }));
+      // Snapshot is an object { lights:[...], scripts:[...] }. Find its outer braces.
+      const start = raw.indexOf('{');
+      const end = raw.lastIndexOf('}');
+      if (start === -1 || end === -1 || end <= start) throw new Error('No readable snapshot returned.');
+      let parsed;
+      try { parsed = JSON.parse(raw.slice(start, end + 1)); }
+      catch (e) { throw new Error('Snapshot was not valid JSON.'); }
+      const lights = Array.isArray(parsed.lights) ? parsed.lights : [];
+      const scripts = Array.isArray(parsed.scripts) ? parsed.scripts : [];
+      return {
+        lights: lights.filter(it => it && it.id && it.name)
+          .map(it => ({ id: String(it.id), name: String(it.name), on: !!it.on })),
+        scripts: scripts.filter(it => it && it.id && it.name)
+          .map(it => ({ id: String(it.id), name: String(it.name) }))
+      };
     }
 
-    function renderHome(items) {
-      const byDomain = { light: [], switch: [], media_player: [] };
-      for (const it of items) {
-        const bucket = byDomain[it.domain];
-        if (bucket) bucket.push(it);
+    // Theme buttons: display label -> HA script entity id. Friendly names from HA
+    // are like "Internal Halloween Script", so we map by keyword for clean labels.
+    function renderHome(snapshot) {
+      const lights = snapshot.lights || [];
+      const scripts = snapshot.scripts || [];
+
+      // Group lights by room name (friendly name), so both Frontdoor lights sit
+      // together and both Hallway lights sit together.
+      const rooms = [];
+      const roomIdx = {};
+      for (const it of lights) {
+        const key = it.name.toLowerCase();
+        if (roomIdx[key] === undefined) {
+          roomIdx[key] = rooms.length;
+          rooms.push({ name: it.name, lights: [] });
+        }
+        rooms[roomIdx[key]].lights.push(it);
       }
-      const LABELS = { light: 'Lights', switch: 'Switches', media_player: 'Media' };
+
+      // Theme chips from returned scripts, cleaned and de-duplicated by keyword.
+      const themeDefs = [
+        ['halloween', 'Halloween'], ['thanksgiving', 'Thanksgiving'], ['christmas', 'Christmas'],
+        ['party', 'Party'], ['candle', 'Candle'], ['night', 'Night'], ['morning', 'Morning'],
+        ['haunted', 'Haunted'], ['rainbow', 'Rainbow']
+      ];
+      const seen = {};
+      const themes = [];
+      for (const s of scripts) {
+        const name = (s.name || '').toLowerCase() + ' ' + (s.id || '').toLowerCase();
+        for (const [kw, label] of themeDefs) {
+          if (name.includes(kw) && !seen[label]) {
+            seen[label] = true;
+            themes.push({ id: s.id, label });
+            break;
+          }
+        }
+      }
+
       let html = '';
-      for (const domain of ['light', 'switch', 'media_player']) {
-        const list = byDomain[domain];
-        if (!list.length) continue;
-        html += '<div class="ha-group-label">' + LABELS[domain] + '</div>';
-        for (const it of list) {
-          const on = it.on;
-          html += '<div class="ha-card" data-id="' + escapeHtml(it.id) + '" data-domain="' + it.domain + '">' +
-            '<div><div class="ha-name">' + escapeHtml(it.name) + '</div>' +
-            '<div class="ha-sub">' + escapeHtml(it.id) + '</div></div>' +
-            '<button class="ha-switch' + (on ? ' on' : '') + '" data-on="' + (on ? '1' : '0') + '" aria-label="Toggle ' + escapeHtml(it.name) + '"></button>' +
+      html += '<button class="ha-alloff" id="ha-alloff">All lights off</button>';
+
+      if (themes.length) {
+        html += '<div class="ha-group-label">Themes</div><div class="ha-themes">';
+        for (const t of themes) html += '<button class="ha-theme" data-id="' + escapeHtml(t.id) + '" data-label="' + escapeHtml(t.label) + '">' + escapeHtml(t.label) + '</button>';
+        html += '</div>';
+      }
+
+      if (rooms.length) {
+        html += '<div class="ha-group-label">Lights</div>';
+        for (const room of rooms) {
+          const on = room.lights.some(l => l.on);
+          const ids = room.lights.map(l => l.id);
+          html += '<div class="ha-card" data-ids="' + escapeHtml(ids.join(',')) + '" data-name="' + escapeHtml(room.name) + '">' +
+            '<div><div class="ha-name">' + escapeHtml(room.name) + '</div>' +
+            '<div class="ha-sub">' + room.lights.length + (room.lights.length > 1 ? ' lights' : ' light') + '</div></div>' +
+            '<button class="ha-switch' + (on ? ' on' : '') + '" data-on="' + (on ? '1' : '0') + '" aria-label="Toggle ' + escapeHtml(room.name) + '"></button>' +
             '</div>';
         }
       }
-      els.homeList.innerHTML = html || '<div class="ha-empty">No controllable devices found.</div>';
+
+      els.homeList.innerHTML = html || '<div class="ha-empty">No lights or themes found.</div>';
+
+      const allOff = document.getElementById('ha-alloff');
+      if (allOff) allOff.addEventListener('click', () => allLightsOff(lights));
+
+      els.homeList.querySelectorAll('.ha-theme').forEach(btn => {
+        btn.addEventListener('click', () => runTheme(btn));
+      });
+      els.homeList.querySelectorAll('.ha-card').forEach(card => {
+        const sw = card.querySelector('.ha-switch');
+        if (sw) sw.addEventListener('click', () => toggleRoom(card, sw));
+      });
     }
 
-    async function homeToggle(card) {
-      const id = card.getAttribute('data-id');
-      const domain = card.getAttribute('data-domain');
-      const sw = card.querySelector('.ha-switch');
-      if (!id || !sw) return;
+    async function allLightsOff(lights) {
+      if (!lights.length) return;
+      const ids = lights.map(l => l.id);
+      // Optimistically switch every room card off.
+      els.homeList.querySelectorAll('.ha-card .ha-switch').forEach(sw => {
+        sw.classList.remove('on'); sw.setAttribute('data-on', '0'); sw.disabled = true;
+      });
+      try {
+        await homeChat([{
+          role: 'user',
+          content: 'Control: turn OFF all of these Home Assistant lights: ' + ids.join(', ') + '. Confirm it worked.'
+        }]);
+        showToast('All lights off');
+      } catch (e) {
+        showToast('That failed — ' + ((e && e.message) || 'relay unreachable'));
+        loadHome(); // resync
+      } finally {
+        els.homeList.querySelectorAll('.ha-card .ha-switch').forEach(sw => { sw.disabled = false; });
+      }
+    }
+
+    async function toggleRoom(card, sw) {
+      const ids = (card.getAttribute('data-ids') || '').split(',');
+      if (!ids.length) return;
       const wasOn = sw.getAttribute('data-on') === '1';
-      // Optimistic update.
       const flip = !wasOn;
       sw.classList.toggle('on', flip);
       sw.setAttribute('data-on', flip ? '1' : '0');
       sw.disabled = true;
-      const action = domain === 'media_player' ? 'play/pause' : (flip ? 'turn on' : 'turn off');
       try {
         await homeChat([{
           role: 'user',
-          content: 'Control: ' + action + ' the Home Assistant device "' + id + '" (' + domain + '). Confirm it worked.'
+          content: 'Control: turn ' + (flip ? 'ON' : 'OFF') + ' these Home Assistant lights: ' + ids.join(', ') + '. Confirm it worked.'
         }]);
         showToast((flip ? 'On' : 'Off') + ' — ' + card.querySelector('.ha-name').textContent);
       } catch (e) {
-        // Roll back on failure.
         sw.classList.toggle('on', wasOn);
         sw.setAttribute('data-on', wasOn ? '1' : '0');
         showToast('That failed — ' + ((e && e.message) || 'relay unreachable'));
       } finally {
         sw.disabled = false;
+      }
+    }
+
+    async function runTheme(btn) {
+      const id = btn.getAttribute('data-id');
+      const label = btn.getAttribute('data-label');
+      if (!id) return;
+      btn.disabled = true;
+      try {
+        await homeChat([{
+          role: 'user',
+          content: 'Control: run the Home Assistant theme script "' + id + '" (' + label + ' mode). Confirm it worked.'
+        }]);
+        showToast(label + ' on');
+      } catch (e) {
+        showToast('That failed — ' + ((e && e.message) || 'relay unreachable'));
+      } finally {
+        btn.disabled = false;
       }
     }
 
@@ -1646,13 +1746,8 @@
 
               // ---------- events ----------
                   // Home control tab
-                  if (els.tabChat) els.tabChat.addEventListener('click', () => switchView('chat'));
-                  if (els.tabHome) els.tabHome.addEventListener('click', () => switchView('home'));
+                  if (els.tabHome) els.tabHome.addEventListener('click', () => switchView(state.view === 'home' ? 'chat' : 'home'));
                   if (els.homeRefresh) els.homeRefresh.addEventListener('click', loadHome);
-                  if (els.homeList) els.homeList.addEventListener('click', (e) => {
-                    const card = e.target.closest('.ha-card');
-                    if (card && e.target.classList.contains('ha-switch')) homeToggle(card);
-                  });
 
                   els.mic.addEventListener('click', () => manualVoiceInput(true));
     if (els.composer) {
