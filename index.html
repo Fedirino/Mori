@@ -364,7 +364,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.25</span>
+      <span id="ver-tag">Winston v0.9.26</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -443,7 +443,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.25';
+      const APP_VERSION = '0.9.26';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -720,7 +720,7 @@
     // (mixed-content / CORS), so Hermes is the bridge. No HA token in the client.
     const HOME_SYS =
           "You control the Home Assistant dashboard. The user is Fedirino. Respond in English. " +
-      'Control LIGHTS and THEME/SCRIPT modes only. ' +
+      'Control LIGHTS and on/off SWITCHES (plugs used as lights) and THEME/SCRIPT modes only. ' +
       'For a snapshot request, list every light with its entity_id, friendly name, and on/off state, ' +
       'and list the theme scripts (Halloween, Thanksgiving, Christmas, Party, Candle, Night, Morning, ' +
       'Haunted, Rainbow modes) by entity_id and friendly name. ' +
@@ -771,10 +771,13 @@
       try {
         const data = await homeChat([{
           role: 'user',
-          content: 'Snapshot: list every light in Home Assistant and every theme script ' +
+          content: 'Snapshot: list every light in Home Assistant, every on/off switch or plug that is used ' +
+            'as a light (e.g. the bathroom light is a switch), and every theme script ' +
             '(Halloween, Thanksgiving, Christmas, Party, Candle, Night, Morning, Haunted, Rainbow modes). ' +
+            'Put lights and light-plugs together in the "lights" array (use their friendly name and on/off state). ' +
             'Return ONLY a JSON object: {"lights":[{"id":"entity_id","name":"friendly name","on":true|false},...],' +
             '"scripts":[{"id":"entity_id","name":"friendly name"},...]}. Include every light and every theme script. ' +
+            'Do not include non-lighting switches (remote access, do-not-disturb, shuffle, repeat). ' +
             'No prose, no markdown fences.'
         }]);
         const snapshot = parseHomeSnapshot(data.reply || '');
@@ -894,7 +897,7 @@
       try {
         await homeChat([{
           role: 'user',
-          content: 'Control: turn OFF all of these Home Assistant lights: ' + ids.join(', ') + '. Confirm it worked.'
+          content: 'Control: turn OFF all of these Home Assistant light/switch devices: ' + ids.join(', ') + '. Confirm it worked.'
         }]);
         showToast('All lights off');
       } catch (e) {
@@ -916,7 +919,7 @@
       try {
         await homeChat([{
           role: 'user',
-          content: 'Control: turn ' + (flip ? 'ON' : 'OFF') + ' these Home Assistant lights: ' + ids.join(', ') + '. Confirm it worked.'
+          content: 'Control: turn ' + (flip ? 'ON' : 'OFF') + ' these Home Assistant light/switch devices: ' + ids.join(', ') + '. Confirm it worked.'
         }]);
         showToast((flip ? 'On' : 'Off') + ' — ' + card.querySelector('.ha-name').textContent);
       } catch (e) {
