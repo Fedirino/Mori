@@ -391,20 +391,21 @@ function audioFormatFromMime(mime) {
     return 'webm';
   }
 
-  /* ------------------------------------------------------------------ *
-   * Standalone House Lights dashboard — Home Assistant REST proxy.
-   * The guest app (kyo-os.web.app/lights/) talks ONLY to these endpoints,
-   * never to HA directly. Auth is a shared passcode, not Google.
-   * ------------------------------------------------------------------ */
 
-  const HASS_LIGHT_DOMAINS = new Set(['light']);
-  // Switches that are really lights (or ones with "light" in the name).
-  const HASS_SWITCH_AS_LIGHT = /light|bathroom|plug|socket/i;
-  // Junk switches to exclude (Echo DND / shuffle / repeat / do-not-disturb etc).
-  const HASS_SKIP_SWITCH = /(remote|dnd|do.?not.?disturb|shuffle|repeat|restart|unpair|power.restored|remote.config|paired.remotes|next.alarm|next.timer|next.reminder)/i;
+/* ================================================================== *
+ * Standalone House Lights dashboard — Home Assistant REST proxy.
+ * The guest app (kyo-os.web.app/lights/) talks ONLY to these endpoints,
+ * never to HA directly. Auth is a shared passcode, not Google.
+ * ================================================================== */
 
-  // Mode scripts the dashboard can launch. Keys are HA entity ids.
-  const HASS_MODES = {
+const HASS_LIGHT_DOMAINS = new Set(['light']);
+// Switches that are really lights (or ones with "light" in the name).
+const HASS_SWITCH_AS_LIGHT = /light|bathroom|plug|socket/i;
+// Junk switches to exclude (Echo DND / shuffle / repeat / do-not-disturb etc).
+const HASS_SKIP_SWITCH = /(remote|dnd|do.?not.?disturb|shuffle|repeat|restart|unpair|power.restored|remote.config|paired.remotes|next.alarm|next.timer|next.reminder)/i;
+
+// Mode scripts the dashboard can launch. Keys are HA entity ids.
+const HASS_MODES = {
   'script.halloween_mode':    { label: 'Halloween',   emoji: '🎃' },
   'script.thanksgiving_mode': { label: 'Thanksgiving', emoji: '🦃' },
   'script.christmas_mode':    { label: 'Christmas',   emoji: '🎄' },
@@ -414,47 +415,62 @@ function audioFormatFromMime(mime) {
   'script.morning_lights':    { label: 'Morning',     emoji: '🌅' },
   'script.haunted_mode':      { label: 'Haunted',     emoji: '👻' },
   'script.rainbow_mode':      { label: 'Rainbow',     emoji: '🌈' }
-  };
+};
 
-  function constantTimeEqual(a, b) {
+function constantTimeEqual(a, b) {
   const ha = crypto.createHash('sha256').update(String(a)).digest();
   const hb = crypto.createHash('sha256').update(String(b)).digest();
   return crypto.timingSafeEqual(ha, hb);
-  }
+}
 
-  async function authorizeLights(req) {
+async function authorizeLights(req) {
   const provided = String(req.get('x-lights-passcode') || '');
   const expected = lightsPasscode.value();
   if (!expected || !provided) return false;
   return constantTimeEqual(provided, expected);
-  }
+}
 
-  async function hassFetch(path, options = {}) {
+async function hassFetch(path, options = {}) {
   const base = String(hassUrl.value() || '').replace(/\/+$/, '');
   const token = hassToken.value();
   if (!base || !token) return null;
-  const resp = await fetch(base + path, {
-    ...options,
-    headers: {
-      Authorization: 'Bearer ' + token,
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    },
-    signal: AbortSignal.timeout(12_000)
-  });
-  return resp;
+  try {
+    const resp = await fetch(base + path, {
+      ...options,
+      headers: {
+        Authorization: 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      },
+      signal: AbortSignal.timeout(15_000)
+    });
+    return resp;
+  } catch (error) {
+    // Network/DNS failure (HA not reachable from the cloud yet).
+    const err = new Error('Home Assistant is not reachable from the internet.');
+    err.lightsUnreachable = true;
+    err.cause = error;
+    throw err;
   }
+}
 
-  function isDashboardLight(e) {
+function lightsUnreachableErr(res, error) {
+  if (error && error.lightsUnreachable) {
+    return json(res, 503, { error: 'Home Assistant is not reachable from the internet yet — the house setup isn’t finished.' });
+  }
+  return json(res, 502, { error: 'Home Assistant refused the request.' });
+}
+
+function isDashboardLight(e) {
   const id = String(e.entity_id || '');
   if (HASS_LIGHT_DOMAINS.has(id.split('.')[0])) return true;
   if (id.startsWith('switch.') && !HASS_SKIP_SWITCH.test(id) && HASS_SWITCH_AS_LIGHT.test(id + ' ' + (e.attributes && e.attributes.friendly_name || ''))) {
     return true;
   }
   return false;
-  }
+}
 
-  function groupDashboardLights(states) {
+function groupDashboardLights(states) {
   const groups = new Map();
   const ordered = [];
   const lightStates = states.filter(isDashboardLight);
@@ -476,47 +492,51 @@ function audioFormatFromMime(mime) {
     on: groups.get(room).some(l => l.on),
     lights: groups.get(room)
   }));
-  }
+}
 
-  async function handleLightsSnapshot(req, res) {
-  const resp = await hassFetch('/api/states');
+async function handleLightsSnapshot(req, res) {
+  let resp;
+  try { resp = await hassFetch('/api/states'); }
+  catch (e) { return lightsUnreachableErr(res, e); }
   if (!resp) return json(res, 503, { error: 'Home Assistant is not configured yet.' });
   if (!resp.ok) return json(res, 502, { error: 'Home Assistant refused the request.' });
   const states = await resp.json();
   const lights = groupDashboardLights(states);
-
   const modes = Object.entries(HASS_MODES).map(([id, def]) => {
     const s = states.find(st => st.entity_id === id);
     return { id, label: def.label, emoji: def.emoji, on: !!(s && s.state === 'on') };
   });
-
   return json(res, 200, { lights, modes });
-  }
+}
 
-  async function handleLightsToggle(req, res) {
+async function handleLightsToggle(req, res) {
   const entityId = String((req.body && req.body.entity_id) || '').trim();
   const domain = entityId.split('.')[0];
   if (!entityId || !(HASS_LIGHT_DOMAINS.has(domain) || domain === 'switch')) {
     return json(res, 400, { error: 'Invalid entity.' });
   }
-  const resp = await hassFetch('/api/services/' + domain + '/toggle', {
-    method: 'POST',
-    body: JSON.stringify({ entity_id: entityId })
-  });
+  let resp;
+  try {
+    resp = await hassFetch('/api/services/' + domain + '/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ entity_id: entityId })
+    });
+  } catch (e) { return lightsUnreachableErr(res, e); }
   if (!resp) return json(res, 503, { error: 'Home Assistant is not configured yet.' });
   if (!resp.ok) return json(res, 502, { error: 'Home Assistant could not toggle that.' });
   const newStates = await resp.json();
   return json(res, 200, { entities: newStates });
-  }
+}
 
-  async function handleLightsAllOff(req, res) {
-  const resp = await hassFetch('/api/states');
+async function handleLightsAllOff(req, res) {
+  let resp;
+  try { resp = await hassFetch('/api/states'); }
+  catch (e) { return lightsUnreachableErr(res, e); }
   if (!resp) return json(res, 503, { error: 'Home Assistant is not configured yet.' });
   if (!resp.ok) return json(res, 502, { error: 'Home Assistant refused the request.' });
   const states = await resp.json();
   const targets = states.filter(isDashboardLight);
   if (targets.length === 0) return json(res, 200, { ok: true, toggled: 0 });
-
   const jobs = targets.map(e => {
     const domain = e.entity_id.split('.')[0];
     return hassFetch('/api/services/' + domain + '/turn_off', {
@@ -526,40 +546,42 @@ function audioFormatFromMime(mime) {
   });
   await Promise.all(jobs.map(j => j.then(r => r && r.ok).catch(() => false)));
   return json(res, 200, { ok: true, toggled: targets.length });
-  }
+}
 
-  async function handleLightsMode(req, res) {
+async function handleLightsMode(req, res) {
   const id = String((req.body && req.body.mode_id) || '');
   const on = req.body && req.body.on !== false;
   if (!HASS_MODES[id]) return json(res, 400, { error: 'Unknown mode.' });
   const script = id.replace(/^script\./, '');
   const service = on ? 'turn_on' : 'turn_off';
-  const resp = await hassFetch('/api/services/script/' + service, {
-    method: 'POST',
-    body: JSON.stringify({ entity_id: id })
-  });
+  let resp;
+  try {
+    resp = await hassFetch('/api/services/script/' + service, {
+      method: 'POST',
+      body: JSON.stringify({ entity_id: id })
+    });
+  } catch (e) { return lightsUnreachableErr(res, e); }
   if (!resp) return json(res, 503, { error: 'Home Assistant is not configured yet.' });
   if (!resp.ok) return json(res, 502, { error: 'Home Assistant could not run that mode.' });
   return json(res, 200, { ok: true, mode: script, on });
-  }
+}
 
-  async function handleLights(req, res) {
+async function handleLights(req, res) {
   const path = String(req.path || req.url || '').split('?')[0].replace(/\/+$/, '');
-
   if (req.method === 'GET' && path.endsWith('/lights')) return await handleLightsSnapshot(req, res);
   if (req.method === 'POST' && path.endsWith('/lights/toggle')) return await handleLightsToggle(req, res);
   if (req.method === 'POST' && path.endsWith('/lights/alloff')) return await handleLightsAllOff(req, res);
   if (req.method === 'POST' && path.endsWith('/lights/mode')) return await handleLightsMode(req, res);
   return json(res, 404, { error: 'Unknown lights endpoint.' });
-  }
+}
 
-  exports.api = onRequest({
+exports.api = onRequest({
   region: 'us-central1',
   timeoutSeconds: 120,
   memory: '256MiB',
   maxInstances: 3,
   secrets: [openRouterKey, hermesApiKey, hermesApiUrl, elevenLabsKey, allowedEmail, hassUrl, hassToken, lightsPasscode]
-  }, async (req, res) => {
+}, async (req, res) => {
   const origin = req.get('origin');
   res.set('Vary', 'Origin');
   res.set('X-Content-Type-Options', 'nosniff');
@@ -605,4 +627,4 @@ function audioFormatFromMime(mime) {
     console.error('Winston API error', error);
     return json(res, 500, { error: 'Winston could not complete that request.' });
   }
-  });
+});
