@@ -364,7 +364,7 @@
     <div class="whisper" id="whisper">tap to speak</div>
 
     <div class="foot">
-      <span id="ver-tag">Winston v0.9.26</span>
+      <span id="ver-tag">Winston v0.9.27</span>
       <span id="model-tag"></span>
     </div>
   </main>
@@ -443,7 +443,7 @@
                 .join('\n');
             }
 
-      const APP_VERSION = '0.9.26';
+      const APP_VERSION = '0.9.27';
     const DEFAULT_ELEVEN_VOICE_ID = 'goT3UYdM9bhm0n2lmKQx';
 
         // Read initial persona before state construction to avoid TDZ issues
@@ -751,12 +751,15 @@
     }
 
     function homeChat(messages) {
-      if (!hasCloudSession()) {
-        const err = new Error('Sign in with Google first.');
-        err.status = 401;
-        throw err;
-      }
-      return cloud.chat({
+          // Gate only on being signed in, NOT on cloudState.ready — that flag is
+          // probed once at page load and can be stale-false after a relay blip even
+          // while the user is logged in. cloud.chat() re-probes readiness itself.
+          if (!cloudState.user) {
+            const err = new Error('Sign in with Google first.');
+            err.status = 401;
+            throw err;
+          }
+          return cloud.chat({
         model: state.model,
         messages: [{ role: 'system', content: HOME_SYS }, ...messages],
         max_tokens: 800,
@@ -765,10 +768,24 @@
     }
 
     async function loadHome() {
-      if (!els.homeState || !els.homeList) return;
-      els.homeState.textContent = 'loading…';
-      els.homeList.innerHTML = '<div class="ha-empty ha-busy">Contacting the house…</div>';
-      try {
+          if (!els.homeState || !els.homeList) return;
+          // Auth hydrates asynchronously after page load. If the app resumed to the
+          // Home view before Firebase has settled, cloudState.user may briefly be
+          // null even though the user is logged in — wait a moment and retry rather
+          // than flashing a misleading "sign in" error.
+          if (!cloudState.initialized || !cloudState.user) {
+            els.homeState.textContent = 'signing in…';
+            els.homeList.innerHTML = '<div class="ha-empty ha-busy">Contacting the house…</div>';
+            await new Promise(r => setTimeout(r, 1200));
+            if (!cloudState.user) {
+              els.homeState.textContent = 'unavailable';
+              els.homeList.innerHTML = '<div class="ha-empty">Not signed in — tap the gear and sign in with Google.</div>';
+              return;
+            }
+          }
+          els.homeState.textContent = 'loading…';
+          els.homeList.innerHTML = '<div class="ha-empty ha-busy">Contacting the house…</div>';
+          try {
         const data = await homeChat([{
           role: 'user',
           content: 'Snapshot: list every light in Home Assistant, every on/off switch or plug that is used ' +

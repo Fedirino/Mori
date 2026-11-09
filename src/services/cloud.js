@@ -97,8 +97,15 @@ export function createWinstonCloud({ onState = () => {} } = {}) {
   }
 
   async function request(path, { json = null, responseType = 'json' } = {}) {
-    if (!ready) throw new CloudRequestError('The cloud backend is not configured.', 503);
-    if (!auth || !auth.currentUser) throw new CloudRequestError('Sign in with Google first.', 401);
+      // `ready` is only probed once at init. If the relay was down at page load
+      // (e.g. a stale tunnel URL), it stays false all session — re-probe so a
+      // later request succeeds once the relay is reachable again.
+      if (!ready) {
+        ready = await probe();
+        publish();
+        if (!ready) throw new CloudRequestError('The cloud backend is not configured.', 503);
+      }
+      if (!auth || !auth.currentUser) throw new CloudRequestError('Sign in with Google first.', 401);
     const token = await auth.currentUser.getIdToken();
     const response = await fetch('/api/' + path, {
       method: 'POST',
