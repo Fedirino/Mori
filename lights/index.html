@@ -159,7 +159,9 @@
 
   const API = (path, opts = {}) => fetch(path, {
     ...opts,
-    headers: { ...(opts.headers || {}), 'X-Lights-Passcode': pin, 'Origin': location.origin }
+    headers: { ...(opts.headers || {}), 'X-Lights-Passcode': pin,
+      ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+      'Origin': location.origin }
   }).then(async r => {
     const data = await r.json().catch(() => ({}));
     if (!r.ok) { const e = new Error(data.error || 'Request failed'); e.status = r.status; throw e; }

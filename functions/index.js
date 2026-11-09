@@ -509,8 +509,18 @@ async function handleLightsSnapshot(req, res) {
   return json(res, 200, { lights, modes });
 }
 
+// Parse JSON body defensively: browsers may send POST bodies without
+// Content-Type: application/json (fetch with a string body defaults to
+// text/plain), which Firebase leaves as an unparsed raw body.
+function bodyJson(req) {
+  if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) return req.body;
+  const raw = String(req.rawBody || req.body || '');
+  if (!raw) return {};
+  try { return JSON.parse(raw); } catch { return {}; }
+}
+
 async function handleLightsToggle(req, res) {
-  const entityId = String((req.body && req.body.entity_id) || '').trim();
+  const entityId = String(bodyJson(req).entity_id || '').trim();
   const domain = entityId.split('.')[0];
   if (!entityId || !(HASS_LIGHT_DOMAINS.has(domain) || domain === 'switch')) {
     return json(res, 400, { error: 'Invalid entity.' });
@@ -549,8 +559,9 @@ async function handleLightsAllOff(req, res) {
 }
 
 async function handleLightsMode(req, res) {
-  const id = String((req.body && req.body.mode_id) || '');
-  const on = req.body && req.body.on !== false;
+  const body = bodyJson(req);
+  const id = String(body.mode_id || '');
+  const on = body.on !== false;
   if (!HASS_MODES[id]) return json(res, 400, { error: 'Unknown mode.' });
   const script = id.replace(/^script\./, '');
   const service = on ? 'turn_on' : 'turn_off';
