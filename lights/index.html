@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f0d12">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>House Lights</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<style>
+  :root {
+    --bg: #0f0d12;
+    --panel: #1a161f;
+    --panel-2: #201a26;
+    --ink: #f3ede6;
+    --dim: #9a8fa3;
+    --amber: #ff9e4a;
+    --amber-hot: #ffb066;
+    --warm: #ffd9a8;
+    --good: #7fe0a0;
+    --danger: #ff6b6b;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(120% 90% at 50% -10%, #241b2a 0%, var(--bg) 55%);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100dvh;
+    padding: max(12px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+
+  .wrap { max-width: 480px; margin: 0 auto; }
+
+  header { display: flex; align-items: center; justify-content: space-between; margin: 6px 2px 18px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .dot { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--amber), #ff7a4d);
+    box-shadow: 0 0 18px rgba(255,158,74,.45); flex: 0 0 auto; }
+  .brand h1 { font-size: 21px; font-weight: 650; margin: 0; letter-spacing: .01em; }
+  .brand .sub { font-size: 11px; color: var(--dim); margin-top: 2px; font-weight: 500; }
+  .status-chip { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; color: var(--good);
+    background: rgba(127,224,160,.1); border: 1px solid rgba(127,224,160,.28);
+    padding: 6px 11px; border-radius: 999px; display: flex; align-items: center; gap: 6px;
+    flex: 0 0 auto; }
+  .status-chip .led { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 9px var(--good); }
+  .status-chip.off { color: var(--dim); border-color: rgba(154,143,163,.25); background: rgba(154,143,163,.07); }
+  .status-chip.off .led { background: var(--dim); box-shadow: none; }
+
+  /* ===== All off ===== */
+  .alloff {
+    width: 100%; padding: 18px; margin-bottom: 22px; border: 0; border-radius: 20px;
+    background: linear-gradient(135deg, rgba(255,107,107,.16), rgba(255,107,107,.07));
+    color: var(--danger); font-size: 16px; font-weight: 700; letter-spacing: .06em;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    cursor: pointer; transition: transform .08s, filter .15s; border: 1px solid rgba(255,107,107,.25);
+  }
+  .alloff:active { transform: scale(.98); }
+  .alloff:disabled { opacity: .4; cursor: default; }
+
+  /* ===== Room cards ===== */
+  .room { background: var(--panel); border: 1px solid rgba(255,255,255,.055); border-radius: 18px;
+    padding: 8px 16px; margin-bottom: 11px; display: flex; align-items: center; justify-content: space-between; }
+  .room .name { font-size: 15.5px; font-weight: 600; }
+  .room .name small { display: block; font-size: 11px; color: var(--dim); font-weight: 500; margin-top: 2px; }
+  .switch { width: 54px; height: 32px; border-radius: 999px; border: 0; cursor: pointer; flex: 0 0 auto;
+    background: var(--panel-2); box-shadow: inset 0 1px 3px rgba(0,0,0,.5); position: relative; transition: background .18s; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px;
+    border-radius: 50%; background: #c9bfd0; transition: transform .18s, background .18s; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+  .switch.on { background: linear-gradient(135deg, var(--amber), var(--amber-hot)); box-shadow: 0 0 16px rgba(255,158,74,.4); }
+  .switch.on::after { transform: translateX(22px); background: #fff; }
+  .room.on .name { color: var(--warm); }
+
+  /* ===== Modes ===== */
+  .sec-title { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--dim); margin: 24px 2px 12px; }
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .mode { background: var(--panel); border: 1px solid rgba(255,255,255,.055); border-radius: 15px;
+    padding: 14px 6px; text-align: center; cursor: pointer; transition: transform .07s, background .15s, border-color .15s; }
+  .mode:active { transform: scale(.96); }
+  .mode .emo { font-size: 22px; display: block; margin-bottom: 6px; }
+  .mode .label { font-size: 12px; font-weight: 600; }
+  .mode.on { background: linear-gradient(135deg, rgba(255,158,74,.2), rgba(255,122,77,.1));
+    border-color: rgba(255,158,74,.5); box-shadow: 0 0 18px rgba(255,122,77,.15); }
+  .mode.on .label { color: var(--warm); }
+
+  /* ===== states / errors ===== */
+  .state { margin: 4px 2px 16px; font-size: 13px; color: var(--dim); display: flex; align-items: center; gap: 8px; }
+  .state.err { color: var(--danger); }
+  .state .live { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+
+  /* ===== passcode screen ===== */
+  .pin-screen { display: none; position: fixed; inset: 0; z-index: 20; background: var(--bg);
+    flex-direction: column; align-items: center; justify-content: center; padding: 28px; text-align: center; }
+  .pin-screen.show { display: flex; }
+  .pin-screen .logo { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, var(--amber), #ff7a4d);
+    box-shadow: 0 0 34px rgba(255,158,74,.4); margin-bottom: 22px; }
+  .pin-screen h2 { margin: 0 0 8px; font-size: 24px; font-weight: 650; }
+  .pin-screen p { margin: 0 0 22px; color: var(--dim); font-size: 14px; line-height: 1.5; max-width: 300px; }
+  .pin-input { width: min(300px, 80vw); padding: 16px; border-radius: 14px; border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05); color: var(--ink); font-size: 22px; letter-spacing: .45em; text-align: center;
+    outline: none; }
+  .pin-input:focus { border-color: rgba(255,158,74,.6); box-shadow: 0 0 0 3px rgba(255,158,74,.15); }
+  .pin-enter { width: min(300px, 80vw); margin-top: 14px; padding: 15px; border-radius: 14px; border: 0;
+    background: linear-gradient(135deg, var(--amber), var(--amber-hot)); color: #2b1204; font-size: 15px;
+    font-weight: 700; cursor: pointer; }
+  .pin-err { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 18px; }
+
+  .hint { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+    font-size: 11.5px; color: var(--dim); background: rgba(20,16,24,.92); border: 1px solid rgba(255,255,255,.07);
+    padding: 9px 15px; border-radius: 999px; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
+    z-index: 15; }
+  @media (display-mode: standalone) { .hint { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="dot"></div>
+      <div>
+        <h1>House Lights</h1>
+        <div class="sub">Front Door · Hallway · Stairs</div>
+      </div>
+    </div>
+    <div class="status-chip" id="statchip"><span class="led"></span><span id="statchiptxt">Live</span></div>
+  </header>
+
+  <div id="alloffwrap"><button class="alloff" id="alloff">⏻ &nbsp;All Lights Off</button></div>
+
+  <div class="state" id="state"></div>
+  <div id="rooms"></div>
+
+  <div class="sec-title">Moods</div>
+  <div class="modes" id="modes"></div>
+</div>
+
+<div class="pin-screen" id="pinscreen">
+  <div class="logo"></div>
+  <h2>House Lights</h2>
+  <p>Enter your house PIN to control the lights.</p>
+  <input class="pin-input" id="pininput" inputmode="numeric" type="password" autocomplete="off" maxlength="6" placeholder="••••">
+  <button class="pin-enter" id="pinenter">Unlock</button>
+  <div class="pin-err" id="pinerr"></div>
+</div>
+
+<div class="hint" id="installhint">Tap ⋮ then "Add to Home Screen"</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const roomsEl = $('#rooms'), modesEl = $('#modes'), stateEl = $('#state');
+  const chipTxt = $('#statchiptxt'), chip = $('#statchip');
+  const PIN_KEY = 'house-lights-pin';
+  let pin = localStorage.getItem(PIN_KEY);
+  let busy = false;
+
+  const API = (path, opts = {}) => fetch(path, {
+    ...opts,
+    headers: { ...(opts.headers || {}), 'X-Lights-Passcode': pin, 'Origin': location.origin }
+  }).then(async r => {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(data.error || 'Request failed'); e.status = r.status; throw e; }
+    return data;
+  });
+
+  function setBusy(b) { busy = b; $('#alloff').disabled = b; }
+
+  function renderRooms(rooms) {
+    roomsEl.innerHTML = '';
+    for (const g of rooms) {
+      const div = document.createElement('div');
+      div.className = 'room' + (g.on ? ' on' : '');
+      const label = g.lights.length > 1
+        ? `<small>${g.lights.length} lights</small>` : '';
+      div.innerHTML = `<div class="name">${escapeHtml(g.room)}${label}</div>
+        <button class="switch${g.on ? ' on' : ''}" data-room="${escapeHtml(g.room)}" aria-pressed="${g.on}"></button>`;
+      const btn = div.querySelector('.switch');
+      btn.addEventListener('click', () => toggleRoom(g.lights));
+      roomsEl.appendChild(div);
+    }
+  }
+
+  function renderModes(modes) {
+    modesEl.innerHTML = '';
+    for (const m of modes) {
+      const d = document.createElement('div');
+      d.className = 'mode' + (m.on ? ' on' : '');
+      d.dataset.id = m.id;
+      d.innerHTML = `<span class="emo">${m.emoji}</span><span class="label">${escapeHtml(m.label)}</span>`;
+      d.addEventListener('click', () => toggleMode(m));
+      modesEl.appendChild(d);
+    }
+  }
+
+  async function toggleRoom(lights) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      // Toggle each light in the room; reflect the resulting state optimistically.
+      const p = lights.map(l => API('/api/lights/toggle', { method: 'POST', body: JSON.stringify({ entity_id: l.id }) })
+        .then(() => { l.on = !l.on; }));
+      await Promise.all(p);
+      renderRooms(roomCache);
+    } catch (e) {
+      setStatus(e.status === 401 ? 'PIN incorrect' : 'Could not reach the lights', true);
+      await load();
+    } finally { setBusy(false); }
+  }
+
+  async function toggleMode(m) {
+    if (busy) return;
+    setBusy(true);
+    const nextOn = !m.on;
+    try {
+      await API('/api/lights/mode', { method: 'POST', body: JSON.stringify({ mode_id: m.id, on: nextOn }) });
+      m.on = nextOn;
+      document.querySelector(`.mode[data-id="${m.id}"]`)?.classList.toggle('on', m.on);
+    } catch (e) {
+      setStatus(e.status === 401 ? 'PIN incorrect' : 'Could not run that mode', true);
+      await load();
+    } finally { setBusy(false); }
+  }
+
+  async function allOff() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await API('/api/lights/alloff', { method: 'POST', body: '{}' });
+      for (const g of roomCache || []) for (const l of g.lights) l.on = false;
+      renderRooms(roomCache);
+      setStatus('All lights off');
+    } catch (e) {
+      setStatus(e.status === 401 ? 'PIN incorrect' : 'Could not turn all off', true);
+      await load();
+    } finally { setBusy(false); }
+  }
+
+  let roomCache = [];
+  async function load() {
+    try {
+      const data = await API('/api/lights');
+      roomCache = data.lights;
+      renderRooms(data.lights);
+      renderModes(data.modes);
+      setStatus(data.lights.length ? `Live · ${data.lights.length} lights` : 'No lights found');
+      chip.className = 'status-chip'; chipTxt.textContent = 'Live';
+    } catch (e) {
+      setStatus(e.status === 401 ? 'PIN incorrect' : 'Could not reach the house', true);
+      chip.className = 'status-chip off'; chipTxt.textContent = 'Offline';
+    }
+  }
+
+  function setStatus(text, err = false) {
+    stateEl.textContent = text || '';
+    stateEl.classList.toggle('err', err);
+  }
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // ---- PIN ----
+  const pinScreen = $('#pinscreen'), pinInput = $('#pininput'), pinErr = $('#pinerr');
+  function showPin() { pinScreen.classList.add('show'); setTimeout(() => pinInput.focus(), 50); }
+  async function unlock() {
+    const v = pinInput.value.trim();
+    if (!v) return;
+    // Lightweight verify against the live API before saving.
+    const prev = pin; pin = v;
+    try { await API('/api/lights'); localStorage.setItem(PIN_KEY, v); pinErr.textContent = ''; pinScreen.classList.remove('show'); load(); }
+    catch (e) { pin = prev; pinErr.textContent = e.status === 401 ? 'That PIN wasn’t right.' : 'Could not reach the house yet.'; }
+  }
+  $('#pinenter').addEventListener('click', unlock);
+  pinInput.addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
+
+  if (!pin) { showPin(); }
+  else { load(); }
+
+  $('#alloff').addEventListener('click', allOff);
+
+  // ---- Service worker / install ----
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; const h = $('#installhint'); h.textContent = 'Tap "Add to Home Screen"'; h.style.display = 'block'; });
+  // Auto-reload when the app regains focus (lights may have changed elsewhere).
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && pin) load(); });
+})();
+</script>
+</body>
+</html>

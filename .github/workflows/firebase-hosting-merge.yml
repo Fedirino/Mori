@@ -28,6 +28,9 @@ jobs:
           HERMES_API_URL: ${{ secrets.HERMES_API_URL }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           WINSTON_ALLOWED_EMAIL: ${{ secrets.WINSTON_ALLOWED_EMAIL }}
+          HASS_URL: ${{ secrets.HASS_URL }}
+          HASS_TOKEN: ${{ secrets.HASS_TOKEN }}
+          LIGHTS_PASSCODE: ${{ secrets.LIGHTS_PASSCODE }}
         run: |
           set -euo pipefail
           if [ -z "$HERMES_API_KEY" ] || [ -z "$HERMES_API_URL" ] || [ -z "$ELEVENLABS_API_KEY" ] || [ -z "$WINSTON_ALLOWED_EMAIL" ]; then
@@ -46,6 +49,9 @@ jobs:
           printf '%s' "$HERMES_API_URL" | npx firebase-tools@latest functions:secrets:set HERMES_API_URL --data-file=- --project kyo-os --non-interactive
           printf '%s' "$ELEVENLABS_API_KEY" | npx firebase-tools@latest functions:secrets:set ELEVENLABS_API_KEY --data-file=- --project kyo-os --non-interactive
           printf '%s' "$WINSTON_ALLOWED_EMAIL" | npx firebase-tools@latest functions:secrets:set WINSTON_ALLOWED_EMAIL --data-file=- --project kyo-os --non-interactive
+          printf '%s' "$HASS_URL" | npx firebase-tools@latest functions:secrets:set HASS_URL --data-file=- --project kyo-os --non-interactive
+          printf '%s' "$HASS_TOKEN" | npx firebase-tools@latest functions:secrets:set HASS_TOKEN --data-file=- --project kyo-os --non-interactive
+          printf '%s' "$LIGHTS_PASSCODE" | npx firebase-tools@latest functions:secrets:set LIGHTS_PASSCODE --data-file=- --project kyo-os --non-interactive
           echo "configured=true" >> "$GITHUB_OUTPUT"
       - name: Install Firebase Functions dependencies
         if: steps.runtime.outputs.configured == 'true'

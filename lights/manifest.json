@@ -1,0 +1,14 @@
+{
+  "name": "House Lights",
+  "short_name": "Lights",
+  "description": "House light controls",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f0d12",
+  "theme_color": "#ff9e4a",
+  "icons": [
+    { "src": "../icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "../icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
