@@ -237,7 +237,9 @@
     try {
       const data = await API('/api/lights');
       roomCache = data.lights;
-      renderRooms(data.lights);
+      modeCache = data.modes || modeCache;
+      renderRooms(roomCache);
+      renderModes(modeCache);
       setStatus(data.lights.length ? `Live · ${data.lights.length} lights` : 'No lights found');
     } catch { /* keep optimistic state */ }
   }
@@ -246,13 +248,18 @@
     if (busy) return;
     setBusy(true);
     const nextOn = !m.on;
+    // Optimistic: flip the mood tile instantly.
+    m.on = nextOn;
+    document.querySelector(`.mode[data-id="${m.id}"]`)?.classList.toggle('on', m.on);
     try {
       await API('/api/lights/mode', { method: 'POST', body: JSON.stringify({ mode_id: m.id, on: nextOn }) });
-      m.on = nextOn;
-      document.querySelector(`.mode[data-id="${m.id}"]`)?.classList.toggle('on', m.on);
+      // Moods turn the actual lights on/off — re-sync rooms so the cards
+      // and badges reflect what HA really did.
+      await refreshRooms();
     } catch (e) {
+      m.on = !nextOn;
+      document.querySelector(`.mode[data-id="${m.id}"]`)?.classList.toggle('on', m.on);
       setStatus(e.status === 401 ? 'PIN incorrect' : 'Could not run that mode', true);
-      await load();
     } finally { setBusy(false); }
   }
 
