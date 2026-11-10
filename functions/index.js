@@ -545,8 +545,7 @@ async function handleLightsToggle(req, res) {
   // If a mood script is running, its scene takes precedence — just turn on.
   const moodRunning = states.some(st => HASS_MODES[st.entity_id] && st.state === 'on');
 
-  let service = domain + '/' + (isLight ? 'turn_on' : 'turn_off');
-  if (!turningOn) service = domain + '/turn_off';
+  let service = domain + '/' + (turningOn ? 'turn_on' : 'turn_off');
 
   const body = { entity_id: entityId };
   if (turningOn && isLight && !moodRunning) {
