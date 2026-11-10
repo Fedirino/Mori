@@ -519,17 +519,51 @@ function bodyJson(req) {
   try { return JSON.parse(raw); } catch { return {}; }
 }
 
+/* Warm white (Kelvin) used when a light is toggled on individually and no
+   mood is running, so it doesn't carry over a mood color. */
+const HASS_WARM_WHITE_KELVIN = 4000;
+const HASS_NORMAL_BRIGHTNESS = 255;
+
 async function handleLightsToggle(req, res) {
   const entityId = String(bodyJson(req).entity_id || '').trim();
   const domain = entityId.split('.')[0];
   if (!entityId || !(HASS_LIGHT_DOMAINS.has(domain) || domain === 'switch')) {
     return json(res, 400, { error: 'Invalid entity.' });
   }
+
+  // Resolve the light's current state so we can turn it ON white (not toggle
+  // back to a stale mood color) or OFF.
+  let states;
+  try {
+    const s = await hassFetch('/api/states');
+    states = s && s.ok ? await s.json() : [];
+  } catch { states = []; }
+  const cur = states.find(st => st.entity_id === entityId);
+  const isCurrentlyOn = cur && cur.state === 'on';
+  const turningOn = !isCurrentlyOn;
+  const isLight = domain !== 'switch';
+  // If a mood script is running, its scene takes precedence — just turn on.
+  const moodRunning = states.some(st => HASS_MODES[st.entity_id] && st.state === 'on');
+
+  let service = domain + '/' + (isLight ? 'turn_on' : 'turn_off');
+  if (!turningOn) service = domain + '/turn_off';
+
+  const body = { entity_id: entityId };
+  if (turningOn && isLight && !moodRunning) {
+    // Force a standard warm-white so it doesn't remember the last mood color.
+    if ((cur && cur.attributes && cur.attributes.supported_color_modes || []).includes('color_temp')) {
+      body['color_temp_kelvin'] = HASS_WARM_WHITE_KELVIN;
+    } else if ((cur && cur.attributes && cur.attributes.supported_color_modes || []).includes('hs')) {
+      body['hs_color'] = [0, 0]; // white
+    }
+    body['brightness'] = HASS_NORMAL_BRIGHTNESS;
+  }
+
   let resp;
   try {
-    resp = await hassFetch('/api/services/' + domain + '/toggle', {
+    resp = await hassFetch('/api/services/' + service, {
       method: 'POST',
-      body: JSON.stringify({ entity_id: entityId })
+      body: JSON.stringify(body)
     });
   } catch (e) { return lightsUnreachableErr(res, e); }
   if (!resp) return json(res, 503, { error: 'Home Assistant is not configured yet.' });
