@@ -262,7 +262,9 @@
     try {
       await API('/api/lights/alloff', { method: 'POST', body: '{}' });
       for (const g of roomCache || []) for (const l of g.lights) l.on = false;
+      for (const m of modeCache || []) m.on = false;
       renderRooms(roomCache);
+      renderModes(modeCache);
       setStatus('All lights off');
     } catch (e) {
       setStatus(e.status === 401 ? 'PIN incorrect' : 'Could not turn all off', true);
@@ -271,12 +273,14 @@
   }
 
   let roomCache = [];
+  let modeCache = [];
   async function load() {
     try {
       const data = await API('/api/lights');
       roomCache = data.lights;
+      modeCache = data.modes || [];
       renderRooms(data.lights);
-      renderModes(data.modes);
+      renderModes(modeCache);
       setStatus(data.lights.length ? `Live · ${data.lights.length} lights` : 'No lights found');
       chip.className = 'status-chip'; chipTxt.textContent = 'Live';
     } catch (e) {

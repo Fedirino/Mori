@@ -546,7 +546,6 @@ async function handleLightsAllOff(req, res) {
   if (!resp.ok) return json(res, 502, { error: 'Home Assistant refused the request.' });
   const states = await resp.json();
   const targets = states.filter(isDashboardLight);
-  if (targets.length === 0) return json(res, 200, { ok: true, toggled: 0 });
   const jobs = targets.map(e => {
     const domain = e.entity_id.split('.')[0];
     return hassFetch('/api/services/' + domain + '/turn_off', {
@@ -554,6 +553,16 @@ async function handleLightsAllOff(req, res) {
       body: JSON.stringify({ entity_id: e.entity_id })
     });
   });
+  // Also stop any running mood scripts so All Lights Off really means all off.
+  for (const modeId of Object.keys(HASS_MODES)) {
+    const s = states.find(st => st.entity_id === modeId);
+    if (s && s.state === 'on') {
+      jobs.push(hassFetch('/api/services/script/turn_off', {
+        method: 'POST',
+        body: JSON.stringify({ entity_id: modeId })
+      }));
+    }
+  }
   await Promise.all(jobs.map(j => j.then(r => r && r.ok).catch(() => false)));
   return json(res, 200, { ok: true, toggled: targets.length });
 }
