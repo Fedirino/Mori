@@ -1,9 +1,12 @@
 /* House Lights - offline-first service worker */
-const CACHE = 'house-lights-v1';
+const CACHE = 'house-lights-v2';
 const CORE = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  './icon-maskable-512.png'
 ];
 
 self.addEventListener('install', (e) => {

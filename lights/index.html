@@ -9,7 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>House Lights</title>
 <link rel="manifest" href="./manifest.json">
-<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="icon" type="image/png" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-180.png">
 <style>
   :root {
     --bg: #0f0d12;
@@ -115,11 +116,26 @@
     font-weight: 700; cursor: pointer; }
   .pin-err { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 18px; }
 
-  .hint { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%);
-    font-size: 11.5px; color: var(--dim); background: rgba(20,16,24,.92); border: 1px solid rgba(255,255,255,.07);
-    padding: 9px 15px; border-radius: 999px; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
-    z-index: 15; }
-  @media (display-mode: standalone) { .hint { display: none; } }
+  .hint { display: none; }
+
+  /* ===== Install prompt modal ===== */
+  .install-overlay { position: fixed; inset: 0; z-index: 40; display: none; align-items: flex-end; justify-content: center;
+    background: rgba(0,0,0,.55); backdrop-filter: blur(2px); }
+  .install-overlay.show { display: flex; }
+  .install-card { width: 100%; max-width: 430px; margin: 0 auto; background: var(--panel);
+    border: 1px solid rgba(255,255,255,.09); border-radius: 24px 24px 0 0; padding: 24px 22px max(26px, env(safe-area-inset-bottom));
+    box-shadow: 0 -10px 40px rgba(0,0,0,.5); }
+  .install-ic { width: 54px; height: 54px; border-radius: 13px; background: linear-gradient(135deg, var(--amber), #ff7a4d);
+    box-shadow: 0 0 22px rgba(255,158,74,.4); display: flex; align-items: center; justify-content: center;
+    font-size: 30px; margin-bottom: 14px; }
+  .install-card h2 { margin: 0 0 6px; font-size: 20px; font-weight: 700; }
+  .install-card p { margin: 0 0 20px; color: var(--dim); font-size: 14px; line-height: 1.5; }
+  .install-actions { display: flex; gap: 10px; }
+  .install-btn { flex: 1; padding: 15px; border-radius: 14px; border: 0; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .install-btn.primary { background: linear-gradient(135deg, var(--amber), var(--amber-hot)); color: #2b1204; }
+  .install-btn.ghost { background: rgba(255,255,255,.06); color: var(--dim); }
+  .install-btn.ios { display: none; }
+  @media (display-mode: standalone) { .install-overlay { display: none !important; } }
 </style>
 </head>
 <body>
@@ -153,7 +169,18 @@
   <div class="pin-err" id="pinerr"></div>
 </div>
 
-<div class="hint" id="installhint">Tap ⋮ then "Add to Home Screen"</div>
+<div class="install-overlay" id="installoverlay">
+  <div class="install-card">
+    <div class="install-ic">🏠</div>
+    <h2>Install House Lights</h2>
+    <p>Add it to your home screen so you can control the lights like an app — no browser tabs needed.</p>
+    <div class="install-actions">
+      <button class="install-btn ghost" id="installlater">Not now</button>
+      <button class="install-btn primary" id="installbtn">Install</button>
+      <button class="install-btn primary ios" id="installiosbtn">How to Install</button>
+    </div>
+  </div>
+</div>
 
 <script>
 (() => {
@@ -326,8 +353,58 @@
 
   // ---- Service worker / install ----
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
-  let deferredPrompt;
-  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; const h = $('#installhint'); h.textContent = 'Tap "Add to Home Screen"'; h.style.display = 'block'; });
+
+  const overlay = $('#installoverlay'), insModalBtn = $('#installbtn'),
+        insLaterBtn = $('#installlater'), insIosBtn = $('#installiosbtn');
+  const INSTALL_SEEN_KEY = 'house-lights-install-seen';
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  let deferredPrompt = null;
+
+  function showInstall() { if (window.matchMedia('(display-mode: standalone)').matches) return; overlay.classList.add('show'); }
+  function hideInstall() { overlay.classList.remove('show'); }
+  function maybeShowInstall() {
+    if (localStorage.getItem(INSTALL_SEEN_KEY)) return;
+    // Give the page a beat to settle before interrupting.
+    setTimeout(showInstall, 900);
+  }
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Installing via prompt is Android/desktop; hide the iOS helper.
+    insIosBtn.style.display = 'none';
+    maybeShowInstall();
+  });
+
+  insModalBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') localStorage.setItem(INSTALL_SEEN_KEY, '1');
+      deferredPrompt = null;
+    }
+    hideInstall();
+  });
+
+  insLaterBtn.addEventListener('click', () => { localStorage.setItem(INSTALL_SEEN_KEY, '1'); hideInstall(); });
+
+  // iOS has no beforeinstallprompt; show 'How to Install' steps instead.
+  if (isIOS) {
+    insIosBtn.style.display = 'block';
+    insModalBtn.textContent = 'Share';
+    insModalBtn.addEventListener('click', () => {
+      const p = $('.install-card p');
+      p.innerHTML = 'Tap the <b>Share</b> button <b>⎋</b> at the bottom, then choose <b>"Add to Home Screen"</b>.';
+      insModalBtn.style.display = 'none';
+      insLaterBtn.textContent = 'Done';
+    });
+    setTimeout(showInstall, 1200);
+  }
+
+  // Once installed, never show the install flow again.
+  window.addEventListener('appinstalled', () => localStorage.setItem(INSTALL_SEEN_KEY, '1'));
+  if (window.matchMedia('(display-mode: standalone)').matches) localStorage.setItem(INSTALL_SEEN_KEY, '1');
+
   // Auto-reload when the app regains focus (lights may have changed elsewhere).
   document.addEventListener('visibilitychange', () => { if (!document.hidden && pin) load(); });
 })();

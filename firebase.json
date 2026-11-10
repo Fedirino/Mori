@@ -30,7 +30,8 @@
       { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
       { "source": "/lights/index.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
       { "source": "/lights/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
-      { "source": "/lights/manifest.json", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+      { "source": "/lights/manifest.json", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+      { "source": "/lights/icon-*.png", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] }
     ]
   }
 }
